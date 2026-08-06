@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<!--
+  Platinum — Material Catalog Importer
+  00-PL-PC · CSV → Firestore sync for the fabrics catalog
+
+  Design tokens are INLINED below so this file runs standalone (double-click, no server).
+  When this lands in a repo with the platinum-shared submodule, delete the <style id="tokens">
+  block and replace with:  <link rel="stylesheet" href="shared/css/design-tokens.css">
+
+  No build step. Firebase v12 ESM loaded from gstatic, only when a config is present.
+-->
+<html lang="en" data-theme="titanium">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Material Catalog Importer — Platinum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
+<style id="tokens">
+/**
+ * Design Tokens
+ * Generated from Figma Design System
+ * Source: https://www.figma.com/design/L32frKuTuuQFhvUlWGBalf/Design-System
+ *
+ * Collections:
+ *   - _Primitives  → Raw palette + type/scale values (always available)
+ *   - responsive   → Font sizes, line-heights, spacing (always available)
+ *   - Mapped       → Semantic tokens, three themes:
+ *                    [data-theme="titanium"] (default)
+ *                    [data-theme="ivory"]
+ *                    [data-theme="dark"] / prefers-color-scheme: dark
+ */
+
+/*
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
+ 
+ */
+
+/* ============================================================
+   PRIMITIVES — Color Palette
+   ============================================================ */
+
+:root {
+  /* Patina */
+  --color-patina-00: #f9feff;
+  --color-patina-25: #F2FDFF;
+  --color-patina-150: #a1d4e0;
+  --color-patina-200: #8dc7d6;
+  --color-patina-300: #6cadc0;
+  --color-patina-400: #5294a9;
+  --color-patina-500: #3d7d93;
+  --color-patina-600: #2d677c;
+  --color-patina-700: #244f5f;
+  --color-patina-800: #1a3742;
+  --color-patina-900: #101f25;
+  /* Gold */
+  --color-gold-00: #fff7e6;
+  --color-gold-200: #ffdb8e;
+  --color-gold-300: #f3c768;
+  --color-gold-400: #e0b147;
+  --color-gold-500: #c8982c;
+  --color-gold-600: #a37f20;
+  --color-gold-700: #7a6217;
+  --color-gold-800: #4f420f;
+  --color-gold-900: #252008;
+  /* Titanium */
+  --color-titanium-00: #fcfcfc;
+  --color-titanium-50: #f9f9f9;
+  --color-titanium-100: #f4f4f4;
+  --color-titanium-150: #eeeeee;
+  --color-titanium-200: #e9e9e9;
+  --color-titanium-300: #dddddd;
+  --color-titanium-400: #d2d2d2;
+  --color-titanium-500: #d3d3d3;
+  --color-titanium-600: #c6c6c6;
+  --color-titanium-700: #aeaeae;
+  --color-titanium-800: #959595;
+  --color-titanium-900: #7e7e7e;
+  /* Copper */
+  --color-copper-00: #fffbf2;
+  --color-copper-150: #f0b160;
+  --color-copper-200: #ec9d46;
+  --color-copper-300: #d77d2b;
+  --color-copper-400: #d4742c;
+  --color-copper-500: #c76028;
+  --color-copper-600: #9f482e;
+  --color-copper-700: #773027;
+  --color-copper-800: #501213;
+  --color-copper-900: #280006;
+  /* Ivory */
+  --color-ivory-00: #f9f6f1;
+  --color-ivory-25: #F7F4ED;
+  --color-ivory-50: #F6F2E9;
+  --color-ivory-100: #f3eee2;
+  --color-ivory-200: #eae6de;
+  --color-ivory-300: #dedad1;
+  --color-ivory-400: #d1ccc4;
+  --color-ivory-500: #c2bfb6;
+  --color-ivory-700: #939188;
+  --color-ivory-800: #838078;
+  --color-ivory-900: #6A6861;
+  /* Carbon */
+  --color-carbon-100: #575757;
+  --color-carbon-200: #4c4c4c;
+  --color-carbon-300: #424242;
+  --color-carbon-400: #383838;
+  --color-carbon-500: #2d2d2d;
+  --color-carbon-600: #232323;
+  --color-carbon-700: #1c1c1c;
+  --color-carbon-800: #151515;
+  /* Green */
+  --color-green-50: #daf5e8;
+  --color-green-200: #85d8b8;
+  --color-green-600: #007f6a;
+  --color-green-800: #06433d;
+  /* Red */
+  --color-red-00: #fff4f5;
+  --color-red-100: #fc9090;
+  --color-red-300: #f44336;
+  --color-red-900: #630606;
+  /* Base */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  /* ============================================================
+    DATA COLORS
+    ============================================================ */
+  /*cherry*/
+  --datacolor-cherry-00: #fff1f5;
+  --datacolor-cherry-01: #ffc8d7;
+  --datacolor-cherry-02: #ff9bba;
+  --datacolor-cherry-03: #e280a0;
+  --datacolor-cherry-04: #bf6b86;
+  --datacolor-cherry-05: #9d576e;
+  --datacolor-cherry-06: #7c4456;
+  --datacolor-cherry-07: #5d3240;
+  /*orange*/
+  --datacolor-orange-00: #fff3e9;
+  --datacolor-orange-01: #ffcea7;
+  --datacolor-orange-02: #ffa659;
+  --datacolor-orange-03: #dc8f4b;
+  --datacolor-orange-04: #b9783e;
+  --datacolor-orange-05: #986232;
+  --datacolor-orange-06: #784c26;
+  --datacolor-orange-07: #5a381a;
+  /*lemon*/
+  --datacolor-lemon-00: #f2ffa2;
+  --datacolor-lemon-01: #d6e562;
+  --datacolor-lemon-02: #bbc855;
+  --datacolor-lemon-03: #a1ac48;
+  --datacolor-lemon-04: #87913c;
+  --datacolor-lemon-05: #6e7630;
+  --datacolor-lemon-06: #575d24;
+  --datacolor-lemon-07: #404519;
+  /*mint*/
+  --datacolor-mint-00: #dfffe4;
+  --datacolor-mint-01: #87f6a1;
+  --datacolor-mint-02: #75d78d;
+  --datacolor-mint-03: #64b978;
+  --datacolor-mint-04: #549c65;
+  --datacolor-mint-05: #448052;
+  --datacolor-mint-06: #346440;
+  --datacolor-mint-07: #254b2e;
+  /*blueberry*/
+  --datacolor-blueberry-00: #eef6ff;
+  --datacolor-blueberry-01: #bdddff;
+  --datacolor-blueberry-02: #89c3ff;
+  --datacolor-blueberry-03: #62a8ee;
+  --datacolor-blueberry-04: #528dc9;
+  --datacolor-blueberry-05: #4274a5;
+  --datacolor-blueberry-06: #335b83;
+  --datacolor-blueberry-07: #244362;
+  /*grape*/
+  --datacolor-grape-00: #f5f4ff;
+  --datacolor-grape-01: #d8d3ff;
+  --datacolor-grape-02: #bcb2ff;
+  --datacolor-grape-03: #a295ec;
+  --datacolor-grape-04: #887dc7;
+  --datacolor-grape-05: #6f66a4;
+  --datacolor-grape-06: #585082;
+  --datacolor-grape-07: #413b61;
+  /* ============================================================
+     PRIMITIVES — Spacing Scale
+     ============================================================ */
+
+  --scale-0: 0px;
+  --scale-25: 1px;
+  --scale-50: 2px;
+  --scale-100: 4px;
+  --scale-200: 8px;
+  --scale-300: 12px;
+  --scale-400: 16px;
+  --scale-500: 20px;
+  --scale-600: 24px;
+  --scale-700: 28px;
+  --scale-800: 32px;
+  --scale-900: 36px;
+  --scale-1000: 40px;
+  --scale-1100: 44px;
+  --scale-1200: 48px;
+  --scale-1600: 64px;
+  /* ============================================================
+     PRIMITIVES — Typography
+     ============================================================ */
+
+  --font-family-primary: "Google Sans Flex", sans-serif;
+  --font-family-mono: "Fira Code", "JetBrains Mono", ui-monospace, monospace;
+  --font-weight-light: 300;
+  --font-weight-book: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  /* ============================================================
+     RESPONSIVE — Font Size
+     ============================================================ */
+
+  --fontsize-label: 10px;
+  --fontsize-body-sm: 12px;
+  --fontsize-body-md: 14px;
+  --fontsize-body-lg: 16px;
+  --fontsize-heading-h6: 20px;
+  --fontsize-heading-h5: 24px;
+  --fontsize-heading-h4: 32px;
+  --fontsize-heading-h3: 40px;
+  --fontsize-heading-h2: 48px;
+  --fontsize-heading-h1: 60px;
+  /* ============================================================
+     RESPONSIVE — Line Height
+     ============================================================ */
+
+  --line-height-label: 14px;
+  --line-height-body-sm: 20px;
+  --line-height-body-md: 20px;
+  --line-height-body-lg: 24px;
+  --line-height-heading-h6: 24px;
+  --line-height-heading-h5: 28px;
+  --line-height-heading-h4: 40px;
+  --line-height-heading-h3: 48px;
+  --line-height-heading-h2: 56px;
+  --line-height-heading-h1: 72px;
+  /* ============================================================
+     RESPONSIVE — Paragraph Spacing
+     ============================================================ */
+
+  --paragraph-spacing-body-sm: 16px;
+  --paragraph-spacing-body-md: 16px;
+  --paragraph-spacing-body-lg: 20px;
+  --paragraph-spacing-heading-h6: 24px;
+  --paragraph-spacing-heading-h5: 28px;
+  --paragraph-spacing-heading-h4: 32px;
+  --paragraph-spacing-heading-h3: 36px;
+  --paragraph-spacing-heading-h2: 40px;
+  --paragraph-spacing-heading-h1: 44px;
+  /* ============================================================
+     BORDER RADIUS
+     ============================================================ */
+
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-full: 9999px;
+}
+
+:root {
+  /* ============================================================
+    CONTENT WIDTH PRIMITIVES
+    ============================================================ */
+  /* sidebar */
+  --container-sidebar-sm: 280px;
+  --container-sidebar-md: 360px;
+  --container-sidebar-lg: 420px;
+  /* aside */
+  --container-aside-lg: 768px;
+  --container-aside-sm: 640px;
+}
+
+/* semantic tokens  */
+:root {
+  --container-sidebar: var(--container-sidebar-md);
+  --container-aside: var(--container-aside-sm);
+  --container-workspace: 1024px;
+  --container-data: 1408px;
+}
+
+@media (min-width: 2000px) {
+  :root {
+    --container-sidebar: var(--container-sidebar-lg);
+    --container-workspace: 1280px;
+    --container-data: 1600px;
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --container-sidebar: var(--container-sidebar-sm);
+    --container-aside: var(--container-aside-sm);
+    --container-workspace: 768px;
+    --container-data: 100%;
+  }
+}
+
+
+
+
+/* ============================================================
+   BASE RESET
+   ============================================================ */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  font-family: var(--font-family-primary);
+  font-style: normal;
+  font-variation-settings: "slnt" 0, "wdth" 10, "GRAD" 8, "ROND" 0;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family-primary);
+  font-style: normal;
+}
+
+a {
+  color: var(--text-interactive);
+  text-decoration: underline;
+}
+
+a:hover {
+  color: var(--interactive-hover);
+  cursor: pointer;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0px 8px;
+  border-radius: var(--border-radius-full);
+  gap: 3px;
+  font-size: var(--fontsize-body-sm);
+  background: var(--status-neutral-bg);
+  color: var(--text-primary);
+  border: 0.5px solid var(--status-neutral-border)
+}
+
+.pill-success {
+  background: var(--status-success-bg);
+  border: 1px solid var(--status-success-border);
+  color: var(--text-primary);
+}
+
+.pill-warn {
+  background: var(--status-warning-bg);
+  border: solid 1px var(--status-warning-border)
+}
+
+
+/* ============================================================
+   HEADINGS
+   ============================================================ */
+
+.type-heading-h1,
+h1 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h1);
+  line-height: var(--line-height-heading-h1);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-heading-h2,
+h2 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h2);
+  line-height: var(--line-height-heading-h2);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-heading-h3,
+h3 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h3);
+  line-height: var(--line-height-heading-h3);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-heading-h4,
+h4 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h4);
+  line-height: var(--line-height-heading-h4);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-heading-h5,
+h5 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h5);
+  line-height: var(--line-height-heading-h5);
+  letter-spacing: 0;
+}
+
+.type-heading-h6,
+h6 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h6);
+  line-height: var(--line-height-heading-h6);
+  letter-spacing: 0;
+}
+
+.type-heading-h6,
+h6 {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--fontsize-heading-h6);
+  line-height: var(--line-height-heading-h6);
+  letter-spacing: 0;
+}
+
+
+/* ============================================================
+   BODY
+   ============================================================ */
+
+.type-body-lg {
+  font-weight: var(--font-weight-light);
+  font-size: var(--fontsize-body-lg);
+  line-height: var(--line-height-body-lg);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-body-md {
+  font-weight: var(--font-weight-light);
+  font-size: var(--fontsize-body-md);
+  line-height: var(--line-height-body-md);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-body-sm {
+  font-weight: var(--font-weight-light);
+  font-size: var(--fontsize-body-sm);
+  line-height: var(--line-height-body-sm);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.type-body-label {
+  font-weight: var(--font-weight-light);
+  font-size: var(--fontsize-label);
+  line-height: var(--line-height-label);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+
+/* ============================================================
+   SEMANTIC TOKENS — Titanium Theme (default)
+   ============================================================ */
+
+:root,
+[data-theme="titanium"] {
+  /* Backgrounds */
+  --bg-page: var(--color-titanium-100);
+  --bg-surface: var(--color-white);
+  --bg-subtle: var(--color-titanium-200);
+  --bg-muted: var(--color-titanium-50);
+  --bg-inverse: var(--color-carbon-600);
+  /* Text */
+  --text-primary: var(--color-carbon-500);
+  --text-secondary: var(--color-carbon-100);
+  --text-tertiary: var(--color-titanium-900);
+  --text-interactive: var(--color-patina-600);
+  --text-on-dark: var(--color-titanium-00);
+  /* Borders */
+  --border-default: var(--color-titanium-700);
+  --border-subtle: var(--color-titanium-400);
+  --border-tertiary: var(--color-titanium-300);
+  --border-focus: var(--color-patina-400);
+  /* Interactive */
+  --interactive-default: var(--color-patina-500);
+  --interactive-hover: var(--color-patina-400);
+  --interactive-pressed: var(--color-patina-600);
+  --interactive-bg-subtle: var(--color-patina-25);
+  /* Accent */
+  --accent-default: var(--color-gold-500);
+  --accent-strong: var(--color-gold-700);
+  --accent-bg: var(--color-gold-00);
+  /* Status — Success */
+  --status-success-bg: var(--color-green-50);
+  --status-success-border: var(--color-green-600);
+  /* Status — Warning */
+  --status-warning-bg: var(--color-copper-00);
+  --status-warning-border: var(--color-copper-300);
+  /* Status — Error */
+  --status-error-bg: var(--color-red-00);
+  --status-error-border: var(--color-red-300);
+  /* Status — Neutral */
+  --status-neutral-bg: var(--color-titanium-100);
+  --status-neutral-border: var(--color-titanium-800);
+  /* Status — Info */
+  --status-info-bg: var(--color-patina-00);
+  --status-info-border: var(--color-patina-400);
+  /* Overlays */
+  --overlay-modal: rgb(from var(--color-black) r g b / 0.6);
+  --overlay-panel: rgb(from var(--color-black) r g b / 0.2);
+}
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn-primary {
+  background: var(--interactive-default);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--border-radius-full);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary:hover {
+  background: var(--interactive-hover);
+}
+
+.btn-secondary {
+  background: var(--bg-surface);
+  color: var(--interactive-default);
+  border: 1px solid var(--interactive-default);
+  border-radius: var(--border-radius-full);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: border-color 0.15s, color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: fit-content;
+}
+
+.btn-secondary:hover {
+  background-color: var(--interactive-bg-subtle);
+}
+
+.btn-ghost {
+  font-weight: var(--font-weight-semibold);
+  border: solid 1px transparent;
+  background: none;
+  color: var(--text-tertiary);
+  padding: 8px 12px;
+  font-size: var(--fontsize-body-sm);
+  gap: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.btn-ghost:hover {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.submit-btn {
+  background: var(--interactive-default);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--border-radius-full);
+  padding: 10px 28px;
+  font-size: var(--fontsize-body-md);
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s;
+
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  /*    background-color: var(--titanium-500);*/
+  pointer-events: none;
+}
+
+
+.submit-btn:hover {
+  background: var(--interactive-hover);
+}
+</style>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg-page); color: var(--text-primary);
+    font-family: var(--font-family-primary, "Google Sans Flex"), system-ui, sans-serif;
+    font-size: var(--fontsize-body-md);
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: var(--scale-600) var(--scale-500) var(--scale-1600); }
+
+  header.app { display: flex; align-items: baseline; gap: var(--scale-300); flex-wrap: wrap; margin-bottom: var(--scale-500); }
+  header.app h1 { font-size: var(--fontsize-heading-h5); margin: 0; font-weight: 600; }
+  header.app .sub { color: var(--text-tertiary); font-size: var(--fontsize-body-sm); }
+
+  /* ---- stepper: heuristic #1, always show where you are ---- */
+  .stepper { display: flex; gap: var(--scale-100); margin-bottom: var(--scale-500); flex-wrap: wrap; }
+  .step {
+    display: flex; align-items: center; gap: var(--scale-200);
+    padding: var(--scale-200) var(--scale-400); border-radius: var(--border-radius-full);
+    background: var(--bg-surface); border: 1px solid var(--border-tertiary);
+    font-size: var(--fontsize-body-sm); color: var(--text-tertiary);
+  }
+  .step .n {
+    width: 20px; height: 20px; border-radius: var(--border-radius-full);
+    background: var(--bg-subtle); color: var(--text-tertiary);
+    display: grid; place-items: center; font-size: var(--fontsize-label); font-weight: 700;
+  }
+  .step.active { border-color: var(--interactive-default); color: var(--text-primary); font-weight: 600; }
+  .step.active .n { background: var(--interactive-default); color: #fff; }
+  .step.done .n { background: var(--status-success-border); color: #fff; }
+  .step.done { color: var(--text-secondary); }
+
+  .card {
+    background: var(--bg-surface); border: 1px solid var(--border-tertiary);
+    border-radius: var(--border-radius-lg); padding: var(--scale-500);
+    margin-bottom: var(--scale-400);
+  }
+  .card > h2 {
+    margin: 0 0 var(--scale-100); font-size: var(--fontsize-body-lg); font-weight: 600;
+    display: flex; align-items: center; gap: var(--scale-200);
+  }
+  .card > .hint { color: var(--text-tertiary); font-size: var(--fontsize-body-sm); margin: 0 0 var(--scale-400); }
+  .card[hidden] { display: none; }
+
+  label.fld { display: block; font-size: var(--fontsize-label); text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-tertiary); font-weight: 700; margin-bottom: var(--scale-100); }
+  select, input[type=text], textarea {
+    font-family: inherit; font-size: var(--fontsize-body-md); color: var(--text-primary);
+    background: var(--bg-surface); border: 1px solid var(--border-subtle);
+    border-radius: var(--border-radius-sm); padding: var(--scale-200) var(--scale-300); width: 100%;
+  }
+  textarea { font-family: var(--font-family-mono, ui-monospace, monospace); font-size: var(--fontsize-body-sm); min-height: 110px; resize: vertical; }
+  select:focus, input:focus, textarea:focus { outline: 2px solid var(--border-focus); outline-offset: 1px; }
+
+  .row { display: flex; gap: var(--scale-400); flex-wrap: wrap; align-items: flex-end; }
+  .row > * { flex: 1 1 220px; }
+  .row > .shrink { flex: 0 0 auto; }
+
+  .drop {
+    border: 2px dashed var(--border-subtle); border-radius: var(--border-radius-md);
+    padding: var(--scale-800) var(--scale-500); text-align: center; cursor: pointer;
+    background: var(--bg-muted); transition: .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--interactive-default); background: var(--interactive-bg-subtle); }
+  .drop .big { font-size: var(--fontsize-body-lg); font-weight: 600; margin-bottom: var(--scale-100); }
+  .drop .small { color: var(--text-tertiary); font-size: var(--fontsize-body-sm); }
+
+  .btn-primary, .btn-secondary, .btn-ghost { font-family: inherit; }
+  .btn-primary:disabled, .btn-secondary:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-danger {
+    background: var(--status-error-border); color: #fff; border: none;
+    border-radius: var(--border-radius-full); padding: var(--scale-200) var(--scale-500);
+    font-size: var(--fontsize-body-sm); font-weight: 700; cursor: pointer; letter-spacing: .03em;
+  }
+  .btn-danger:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost {
+    background: none; border: none; color: var(--text-interactive);
+    font-size: var(--fontsize-body-sm); font-weight: 600; cursor: pointer; padding: var(--scale-100) var(--scale-200);
+  }
+  .actions { display: flex; gap: var(--scale-300); align-items: center; flex-wrap: wrap; margin-top: var(--scale-400); }
+  .actions .spacer { flex: 1; }
+
+  /* ---- summary tiles ---- */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--scale-300); }
+  .tile {
+    border: 1px solid var(--border-tertiary); border-left-width: 3px;
+    border-radius: var(--border-radius-md); padding: var(--scale-300) var(--scale-400);
+    background: var(--bg-surface);
+  }
+  .tile .v { font-size: var(--fontsize-heading-h6); font-weight: 700; line-height: 1.1; }
+  .tile .k { font-size: var(--fontsize-label); text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); font-weight: 700; margin-top: 2px; }
+  .tile.new    { border-left-color: var(--status-success-border); background: var(--status-success-bg); }
+  .tile.changed{ border-left-color: var(--status-info-border);    background: var(--status-info-bg); }
+  .tile.same   { border-left-color: var(--border-default); }
+  .tile.gone   { border-left-color: var(--status-warning-border); background: var(--status-warning-bg); }
+  .tile.excl   { border-left-color: var(--status-error-border);   background: var(--status-error-bg); }
+
+  /* ---- tabs ---- */
+  .tabs { display: flex; gap: var(--scale-100); border-bottom: 1px solid var(--border-tertiary); margin: var(--scale-500) 0 0; flex-wrap: wrap; }
+  .tab {
+    background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+    padding: var(--scale-300) var(--scale-400); font-family: inherit; font-size: var(--fontsize-body-sm);
+    font-weight: 600; color: var(--text-tertiary);
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active { color: var(--text-primary); border-bottom-color: var(--interactive-default); }
+  .tab .cnt {
+    background: var(--bg-subtle); border-radius: var(--border-radius-full);
+    padding: 1px 7px; font-size: var(--fontsize-label); margin-left: 6px; color: var(--text-secondary);
+  }
+  .tab.warn .cnt { background: var(--status-error-bg); color: var(--status-error-border); }
+
+  /* ---- tables ---- */
+  .tbl-scroll { max-height: 460px; overflow: auto; border: 1px solid var(--border-tertiary);
+    border-top: none; border-radius: 0 0 var(--border-radius-md) var(--border-radius-md); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--fontsize-body-sm); }
+  thead th {
+    position: sticky; top: 0; background: var(--bg-muted); text-align: left;
+    padding: var(--scale-200) var(--scale-300); font-size: var(--fontsize-label);
+    text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary);
+    font-weight: 700; border-bottom: 1px solid var(--border-tertiary); white-space: nowrap; z-index: 1;
+  }
+  tbody td { padding: var(--scale-200) var(--scale-300); border-bottom: 1px solid var(--border-tertiary); vertical-align: top; }
+  tbody tr:hover { background: var(--bg-muted); }
+  td.mono, .mono { font-family: var(--font-family-mono, ui-monospace, monospace); font-size: var(--fontsize-body-sm); }
+  .muted { color: var(--text-tertiary); }
+  .was { text-decoration: line-through; color: var(--text-tertiary); }
+  .now { color: var(--status-info-border); font-weight: 600; }
+
+  .pill-s { display: inline-block; padding: 1px 8px; border-radius: var(--border-radius-full);
+    font-size: var(--fontsize-label); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .pill-new  { background: var(--status-success-bg); color: var(--status-success-border); border: 1px solid var(--status-success-border); }
+  .pill-warn2{ background: var(--status-warning-bg); color: var(--status-warning-border); border: 1px solid var(--status-warning-border); }
+  .pill-err  { background: var(--status-error-bg);   color: var(--status-error-border);   border: 1px solid var(--status-error-border); }
+  .pill-info { background: var(--status-info-bg);    color: var(--status-info-border);    border: 1px solid var(--status-info-border); }
+
+  .note {
+    border-left: 3px solid var(--status-info-border); background: var(--status-info-bg);
+    padding: var(--scale-300) var(--scale-400); border-radius: var(--border-radius-sm);
+    font-size: var(--fontsize-body-sm); margin: var(--scale-300) 0;
+  }
+  .note.warn  { border-left-color: var(--status-warning-border); background: var(--status-warning-bg); }
+  .note.err   { border-left-color: var(--status-error-border);   background: var(--status-error-bg); }
+  .note.ok    { border-left-color: var(--status-success-border); background: var(--status-success-bg); }
+  .note b { font-weight: 700; }
+
+  .confirm {
+    border: 1px solid var(--status-warning-border); background: var(--status-warning-bg);
+    border-radius: var(--border-radius-md); padding: var(--scale-400);
+  }
+  .confirm h3 { margin: 0 0 var(--scale-200); font-size: var(--fontsize-body-md); font-weight: 700; }
+  .confirm ul { margin: 0 0 var(--scale-300); padding-left: var(--scale-500); font-size: var(--fontsize-body-sm); }
+  .confirm li { margin-bottom: 2px; }
+
+  .bar { height: 6px; background: var(--bg-subtle); border-radius: var(--border-radius-full); overflow: hidden; margin-top: var(--scale-300); }
+  .bar > i { display: block; height: 100%; background: var(--interactive-default); width: 0; transition: width .2s; }
+
+  .cfg-status { font-size: var(--fontsize-body-sm); display: flex; align-items: center; gap: var(--scale-200); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); flex: 0 0 auto; }
+  .dot.on  { background: var(--status-success-border); }
+  .dot.off { background: var(--status-error-border); }
+
+  details.cfg summary { cursor: pointer; font-weight: 600; font-size: var(--fontsize-body-sm); list-style: none; display: flex; align-items: center; gap: var(--scale-200); }
+  details.cfg summary::-webkit-details-marker { display: none; }
+  details.cfg summary::before { content: "▸"; color: var(--text-tertiary); }
+  details.cfg[open] summary::before { content: "▾"; }
+
+  .empty { padding: var(--scale-800); text-align: center; color: var(--text-tertiary); font-size: var(--fontsize-body-sm); }
+  code.k { background: var(--bg-subtle); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app">
+    <h1>Material Catalog Importer</h1>
+    <span class="sub">Platinum · 00-PL-PC — CSV is read-only input; the spreadsheet stays source of truth</span>
+  </header>
+
+  <div class="stepper" id="stepper">
+    <div class="step active" data-s="1"><span class="n">1</span> Load CSV</div>
+    <div class="step" data-s="2"><span class="n">2</span> Normalize vendors</div>
+    <div class="step" data-s="3"><span class="n">3</span> Review changes</div>
+    <div class="step" data-s="4"><span class="n">4</span> Apply</div>
+  </div>
+
+  <!-- ============ STEP 1 ============ -->
+  <section class="card" id="c1">
+    <h2>1 · Load the CSV</h2>
+    <p class="hint">Category comes from the file you choose, not from a column — each category is exported separately.</p>
+
+    <div class="row" style="margin-bottom:var(--scale-400)">
+      <div>
+        <label class="fld" for="cat">Category</label>
+        <select id="cat">
+          <option value="bookcloth">Bookcloth / roll goods (fabrics)</option>
+          <option value="linen-paper">Linen / Paper</option>
+          <option value="leather">Leather</option>
+          <option value="rockboard">Rockboard</option>
+          <option value="wood">Wood</option>
+          <option value="metal">Metal</option>
+          <option value="acrylic">Acrylic</option>
+          <option value="carbonite">Carbonite</option>
+          <option value="4c-litho">4C Litho</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="shrink" style="align-self:flex-end">
+        <span class="pill-s pill-info" id="yieldFlag">yield-eligible</span>
+      </div>
+    </div>
+
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose or drop a CSV file">
+      <div class="big">Drop the CSV here</div>
+      <div class="small">or click to choose · columns used: Swatch Number, Vendor, Product Line, Family, Color, Decoration</div>
+    </div>
+    <input type="file" id="file" accept=".csv,text/csv" hidden>
+
+    <div id="parseOut"></div>
+  </section>
+
+  <!-- ============ STEP 2 ============ -->
+  <section class="card" id="c2" hidden>
+    <h2>2 · Normalize vendors</h2>
+    <p class="hint">Vendor is half the match key, so a typo invents a phantom material <em>and</em> breaks the key for the real one. Uncheck any merge that isn't right.</p>
+    <div id="vendorOut"></div>
+    <div class="actions">
+      <button class="btn-primary" id="toStep3">Continue to review</button>
+      <button class="btn-ghost" id="back1">← Back</button>
+    </div>
+  </section>
+
+  <!-- ============ STEP 3 ============ -->
+  <section class="card" id="c3" hidden>
+    <h2>3 · Review changes</h2>
+    <p class="hint">Nothing is written until you apply. Materials missing from the CSV are deactivated, never deleted — existing jobs must keep resolving.</p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="tbl-scroll" id="tblWrap"><div class="empty">—</div></div>
+
+    <div class="actions">
+      <button class="btn-secondary" id="dlExc">Download exceptions CSV</button>
+      <button class="btn-secondary" id="dlJson">Download payload JSON</button>
+      <span class="spacer"></span>
+      <button class="btn-ghost" id="back2">← Back</button>
+      <button class="btn-primary" id="toStep4">Continue to apply</button>
+    </div>
+  </section>
+
+  <!-- ============ STEP 4 ============ -->
+  <section class="card" id="c4" hidden>
+    <h2>4 · Apply to Firestore</h2>
+
+    <details class="cfg" id="cfgBox">
+      <summary>Firebase connection <span class="cfg-status"><span class="dot off" id="cfgDot"></span><span id="cfgLabel">not configured</span></span></summary>
+      <p class="hint" style="margin-top:var(--scale-300)">
+        Paste the config object from Firebase console → Project settings → Your apps → Web app.
+        Stored in this browser only (<code class="k">localStorage</code>), never sent anywhere but Firebase.
+      </p>
+      <textarea id="cfgText" spellcheck="false" placeholder='{
+  "apiKey": "...",
+  "authDomain": "platinum-product-config.firebaseapp.com",
+  "projectId": "platinum-product-config",
+  "storageBucket": "platinum-product-config.firebasestorage.app",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+      <div class="actions">
+        <button class="btn-secondary" id="cfgSave">Save &amp; connect</button>
+        <button class="btn-ghost" id="cfgClear">Clear</button>
+        <span id="cfgMsg" class="muted" style="font-size:var(--fontsize-body-sm)"></span>
+      </div>
+    </details>
+
+    <div id="applyBody" style="margin-top:var(--scale-400)"></div>
+  </section>
+
+  <p class="muted" style="font-size:var(--fontsize-label); text-align:center; margin-top:var(--scale-600)">
+    Spreadsheet-owned fields are overwritten on import. Tool-owned fields
+    (<code class="k">rollWidth</code>, <code class="k">patternSensitive</code>, <code class="k">decorationEligible</code>, <code class="k">notes</code>)
+    are never touched.
+  </p>
+</div>
+
+<script type="module">
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const COLS = {
+  swatchNumber: 'Swatch Number',
+  vendor:       'Vendor',
+  productLine:  'Product Line',
+  family:       'Family',
+  color:        'Color',
+  decoration:   'Decoration',
+};
+const SHEET_FIELDS = ['swatchNumber','vendor','productLine','family','color','decoration'];
+const TOOL_FIELDS  = ['rollWidth','patternSensitive','decorationEligible','notes'];
+const YIELD_ELIGIBLE = new Set(['bookcloth','linen-paper']);
+const CFG_KEY = 'plpc_firebase_config';
+// Default project — menu-product-configurator. Overridable in the UI.
+const DEFAULT_CFG = {
+  apiKey: "AIzaSyBYZU33s5qf8MLGEZcuHq9YbFLC8i-vEAk",
+  authDomain: "menu-product-configurator.firebaseapp.com",
+  projectId: "menu-product-configurator",
+  storageBucket: "menu-product-configurator.firebasestorage.app",
+  messagingSenderId: "1009158242422",
+  appId: "1:1009158242422:web:449c73472f7d015d189f57"
+};
+const BATCH_MAX = 400;
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  fileName: null, category: 'bookcloth',
+  rawRows: [], parsed: null, vendorMap: null,
+  diff: null, existing: null, db: null, fb: null,
+};
+
+const $  = id => document.getElementById(id);
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const slug = s => String(s ?? '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+/* ============================================================
+   CSV PARSE  (RFC-ish: quotes, escaped quotes, embedded commas/newlines)
+   ============================================================ */
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i+1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (ch !== '\r') cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+function extract(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) throw new Error('The file appears to be empty.');
+  const header = rows[0].map(h => h.trim());
+  const idx = {};
+  for (const [k, label] of Object.entries(COLS)) {
+    const i = header.findIndex(h => h.toLowerCase() === label.toLowerCase());
+    if (i === -1) throw new Error(`Column "${label}" not found. Found: ${header.filter(Boolean).join(', ')}`);
+    idx[k] = i;
+  }
+  const out = [];
+  for (let r = 1; r < rows.length; r++) {
+    const o = { _line: r + 1 };
+    for (const k of SHEET_FIELDS) o[k] = (rows[r][idx[k]] ?? '').trim();
+    if (SHEET_FIELDS.some(k => o[k] !== '')) out.push(o);
+  }
+  return out;
+}
+
+/* ============================================================
+   VENDOR NORMALIZATION
+   ============================================================ */
+function lev(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  let prev = Array.from({length: n + 1}, (_, j) => j), cur = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++)
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    [prev, cur] = [cur, prev];
+  }
+  return prev[n];
+}
+const sim = (a, b) => { const L = Math.max(a.length, b.length); return L ? 1 - lev(a, b) / L : 1; };
+
+function buildVendorMap(rows) {
+  const counts = new Map();
+  for (const r of rows) if (r.vendor) counts.set(r.vendor, (counts.get(r.vendor) || 0) + 1);
+  // pass 1: case-insensitive exact -> canonical is the highest-count spelling
+  const byLower = new Map();
+  for (const [v, c] of counts) {
+    const k = v.toLowerCase();
+    if (!byLower.has(k) || c > byLower.get(k).count) byLower.set(k, { name: v, count: c });
+  }
+  const canon = [...byLower.values()].sort((a, b) => b.count - a.count);
+  // pass 2: fuzzy — fold low-count spellings into a similar high-count one
+  const merges = [];
+  const finalOf = new Map();
+  for (const c of canon) finalOf.set(c.name.toLowerCase(), c.name);
+  for (const c of canon) {
+    for (const big of canon) {
+      if (big.name === c.name || big.count <= c.count) continue;
+      if (sim(c.name.toLowerCase(), big.name.toLowerCase()) >= 0.85) {
+        merges.push({ from: c.name, to: big.name, count: c.count, toCount: big.count, apply: true });
+        finalOf.set(c.name.toLowerCase(), big.name);
+        break;
+      }
+    }
+  }
+  // case-only variants that aren't in `merges` still get folded silently
+  for (const [v, c] of counts) {
+    const target = byLower.get(v.toLowerCase()).name;
+    if (v !== target && !merges.some(m => m.from === v))
+      merges.push({ from: v, to: target, count: c, toCount: byLower.get(v.toLowerCase()).count, apply: true, caseOnly: true });
+  }
+  return { counts, merges, resolve(v) {
+    if (!v) return v;
+    const m = this.merges.find(x => x.apply && x.from === v);
+    if (m) return m.to;
+    const lc = byLower.get(v.toLowerCase());
+    return lc ? lc.name : v;
+  }};
+}
+
+/* ============================================================
+   BUILD RECORDS + EXCEPTIONS
+   ============================================================ */
+function buildRecords(rows, vendorMap, category) {
+  const skippedNoSwatch = [], skippedNoVendor = [], exactDupes = [];
+  const byKey = new Map();
+
+  for (const r of rows) {
+    if (!r.swatchNumber) { skippedNoSwatch.push(r); continue; }
+    const vendor = vendorMap.resolve(r.vendor);
+    if (!vendor) { skippedNoVendor.push(r); continue; }
+    const rec = {
+      id: `${category}__${slug(vendor)}__${slug(r.swatchNumber)}`,
+      categoryId: category,
+      swatchNumber: r.swatchNumber,
+      vendor,
+      productLine: r.productLine,
+      family: r.family,
+      color: r.color,
+      decoration: r.decoration,
+      _line: r._line,
+      _vendorRaw: r.vendor,
+    };
+    if (!byKey.has(rec.id)) byKey.set(rec.id, []);
+    byKey.get(rec.id).push(rec);
+  }
+
+  const records = [], collisions = [];
+  for (const [id, list] of byKey) {
+    if (list.length === 1) { records.push(list[0]); continue; }
+    const distinct = [...new Map(list.map(x => [SHEET_FIELDS.map(f => x[f]).join(''), x])).values()];
+    if (distinct.length === 1) { exactDupes.push({ id, rows: list }); records.push(distinct[0]); }
+    else collisions.push({ id, rows: list });   // excluded from write — needs a human
+  }
+  return { records, collisions, exactDupes, skippedNoSwatch, skippedNoVendor };
+}
+
+function diffAgainst(records, existing) {
+  const cur = new Map(records.map(r => [r.id, r]));
+  const add = [], change = [], same = [], gone = [];
+  for (const r of records) {
+    const e = existing.get(r.id);
+    if (!e) { add.push(r); continue; }
+    const deltas = SHEET_FIELDS.filter(f => (e[f] ?? '') !== (r[f] ?? ''));
+    if (!deltas.length && e.active !== false) same.push(r);
+    else change.push({ ...r, _deltas: deltas, _prev: e, _reactivate: e.active === false });
+  }
+  for (const [id, e] of existing) if (!cur.has(id) && e.active !== false) gone.push(e);
+  return { add, change, same, gone };
+}
+
+/* ============================================================
+   STEP NAV
+   ============================================================ */
+function goto(n) {
+  [1,2,3,4].forEach(i => { $('c' + i).hidden = i !== n; });
+  document.querySelectorAll('.step').forEach(s => {
+    const i = +s.dataset.s;
+    s.classList.toggle('active', i === n);
+    s.classList.toggle('done', i < n);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   STEP 1 — load
+   ============================================================ */
+$('cat').addEventListener('change', e => {
+  S.category = e.target.value;
+  const ok = YIELD_ELIGIBLE.has(S.category);
+  const f = $('yieldFlag');
+  f.textContent = ok ? 'yield-eligible' : 'no yield — spec only';
+  f.className = 'pill-s ' + (ok ? 'pill-info' : 'pill-warn2');
+});
+
+$('drop').addEventListener('click', () => $('file').click());
+$('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
+['dragenter','dragover'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+$('drop').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+$('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); });
+
+async function loadFile(file) {
+  S.fileName = file.name;
+  const out = $('parseOut');
+  out.innerHTML = '<div class="note">Reading <b>' + esc(file.name) + '</b>…</div>';
+  try {
+    const rows = extract(await file.text());
+    S.rawRows = rows;
+    S.vendorMap = buildVendorMap(rows);
+    const withSwatch = rows.filter(r => r.swatchNumber).length;
+    out.innerHTML =
+      '<div class="note ok"><b>' + esc(file.name) + '</b> parsed — ' +
+      rows.length.toLocaleString() + ' rows with content, ' +
+      withSwatch.toLocaleString() + ' with a swatch number.</div>';
+    const btn = el('div', 'actions');
+    const go = el('button', 'btn-primary', 'Continue to vendor normalization');
+    go.onclick = () => { renderVendors(); goto(2); };
+    btn.append(go);
+    out.append(btn);
+  } catch (err) {
+    out.innerHTML = '<div class="note err"><b>Could not read that file.</b><br>' + esc(err.message) +
+      '<br><span class="muted">Export the sheet as CSV with the header row intact and try again.</span></div>';
+  }
+}
+
+/* ============================================================
+   STEP 2 — vendors
+   ============================================================ */
+function renderVendors() {
+  const vm = S.vendorMap, out = $('vendorOut');
+  out.innerHTML = '';
+  if (!vm.merges.length) {
+    out.append(el('div', 'note ok', 'No vendor variants detected — all ' + vm.counts.size + ' spellings look distinct.'));
+    return;
+  }
+  out.append(el('div', 'note warn',
+    '<b>' + vm.merges.length + ' likely typo' + (vm.merges.length === 1 ? '' : 's') + ' found.</b> ' +
+    'Merging drops ' + vm.counts.size + ' spellings to ' + (vm.counts.size - vm.merges.length) + '.'));
+
+  const t = el('table');
+  t.innerHTML = '<thead><tr><th style="width:36px">Merge</th><th>Variant</th><th>Rows</th><th>→ Canonical</th><th>Rows</th><th>Match</th></tr></thead>';
+  const tb = el('tbody');
+  vm.merges.forEach((m, i) => {
+    const tr = el('tr');
+    tr.innerHTML =
+      '<td><input type="checkbox" data-i="' + i + '" ' + (m.apply ? 'checked' : '') + '></td>' +
+      '<td class="mono">' + esc(m.from) + (m.caseOnly ? ' <span class="pill-s pill-info">case</span>' : '') + '</td>' +
+      '<td class="muted">' + m.count + '</td>' +
+      '<td class="mono"><b>' + esc(m.to) + '</b></td>' +
+      '<td class="muted">' + m.toCount + '</td>' +
+      '<td class="muted">' + Math.round(sim(m.from.toLowerCase(), m.to.toLowerCase()) * 100) + '%</td>';
+    tb.append(tr);
+  });
+  t.append(tb);
+  const wrap = el('div', 'tbl-scroll'); wrap.style.borderTop = '1px solid var(--border-tertiary)';
+  wrap.style.borderRadius = 'var(--border-radius-md)';
+  wrap.append(t); out.append(wrap);
+  wrap.addEventListener('change', e => {
+    if (e.target.matches('input[type=checkbox]')) vm.merges[+e.target.dataset.i].apply = e.target.checked;
+  });
+}
+$('back1').onclick = () => goto(1);
+$('toStep3').onclick = async () => { await prepareDiff(); goto(3); };
+
+/* ============================================================
+   STEP 3 — diff
+   ============================================================ */
+async function prepareDiff() {
+  S.parsed = buildRecords(S.rawRows, S.vendorMap, S.category);
+  S.existing = await fetchExisting(S.category);
+  S.diff = diffAgainst(S.parsed.records, S.existing);
+  renderDiff();
+}
+
+async function fetchExisting(category) {
+  const m = new Map();
+  if (!S.db) return m;
+  const { collection, query, where, getDocs } = S.fb;
+  const snap = await getDocs(query(collection(S.db, 'materials'), where('categoryId', '==', category)));
+  snap.forEach(d => m.set(d.id, { id: d.id, ...d.data() }));
+  return m;
+}
+
+let activeTab = 'add';
+function renderDiff() {
+  const { add, change, same, gone } = S.diff;
+  const p = S.parsed;
+  const excCount = p.collisions.length + p.skippedNoSwatch.length + p.skippedNoVendor.length;
+
+  $('tiles').innerHTML =
+    tile('new',     add.length,    'New')     + tile('changed', change.length, 'Changed') +
+    tile('same',    same.length,   'Unchanged') + tile('gone', gone.length,   'Deactivating') +
+    tile('excl',    excCount,      'Exceptions');
+
+  const defs = [
+    ['add',    'New',        add.length,    false],
+    ['change', 'Changed',    change.length, false],
+    ['same',   'Unchanged',  same.length,   false],
+    ['gone',   'Deactivating', gone.length, false],
+    ['exc',    'Exceptions', excCount,      excCount > 0],
+  ];
+  $('tabs').innerHTML = defs.map(([k, l, c, w]) =>
+    `<button class="tab ${k === activeTab ? 'active' : ''} ${w ? 'warn' : ''}" data-k="${k}">${l}<span class="cnt">${c}</span></button>`).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { activeTab = b.dataset.k; renderDiff(); });
+
+  document.getElementById('noConn')?.remove();
+  if (!S.db) {
+    const n = el('div', 'note');
+    n.id = 'noConn';
+    n.innerHTML = '<b>Not connected to Firestore.</b> Everything is treated as new. ' +
+      'Connect in step 4 to see a real diff against the existing catalog — or just download the payload and exceptions below.';
+    $('tiles').after(n);
+  }
+  $('tblWrap').innerHTML = renderTable(activeTab);
+}
+const tile = (c, v, k) => `<div class="tile ${c}"><div class="v">${v.toLocaleString()}</div><div class="k">${k}</div></div>`;
+
+function renderTable(kind) {
+  const { add, change, same, gone } = S.diff, p = S.parsed;
+  const head = h => '<table><thead><tr>' + h.map(x => `<th>${x}</th>`).join('') + '</tr></thead><tbody>';
+  const cell = (r, f) => `<td>${esc(r[f]) || '<span class="muted">—</span>'}</td>`;
+  const specCols = ['Swatch','Vendor','Product Line','Family','Color','Decoration'];
+  const specRow  = r => `<td class="mono">${esc(r.swatchNumber)}</td>` +
+    ['vendor','productLine','family','color','decoration'].map(f => cell(r, f)).join('');
+
+  if (kind === 'add' || kind === 'same') {
+    const list = kind === 'add' ? add : same;
+    if (!list.length) return `<div class="empty">Nothing here.</div>`;
+    return head(specCols) + list.slice(0, 500).map(r => '<tr>' + specRow(r) + '</tr>').join('') +
+      '</tbody></table>' + more(list.length);
+  }
+  if (kind === 'change') {
+    if (!change.length) return `<div class="empty">Nothing here.</div>`;
+    return head(['Swatch','Vendor','Field','Was','Now']) + change.slice(0, 500).map(r =>
+      r._deltas.map((f, i) => '<tr>' +
+        (i === 0 ? `<td class="mono" rowspan="${r._deltas.length}">${esc(r.swatchNumber)}</td>
+                    <td rowspan="${r._deltas.length}">${esc(r.vendor)}</td>` : '') +
+        `<td class="mono">${f}</td><td class="was">${esc(r._prev[f]) || '—'}</td><td class="now">${esc(r[f]) || '—'}</td></tr>`
+      ).join('')).join('') + '</tbody></table>' + more(change.length);
+  }
+  if (kind === 'gone') {
+    if (!gone.length) return `<div class="empty">Nothing is being deactivated.</div>`;
+    return '<div class="note warn" style="margin:var(--scale-300)">These are absent from the CSV. They will be marked <code class="k">active: false</code> — hidden from the picker but still readable on any job that references them. Nothing is deleted.</div>' +
+      head(specCols) + gone.slice(0, 500).map(r => '<tr>' + specRow(r) + '</tr>').join('') + '</tbody></table>' + more(gone.length);
+  }
+  // exceptions
+  let h = '';
+  if (p.collisions.length) {
+    h += section('Duplicate keys — excluded from the import', 'err',
+      `${p.collisions.length} Vendor + Swatch Number ${p.collisions.length === 1 ? 'key maps' : 'keys map'} to more than one distinct material. These are data-entry errors in the spreadsheet, so nothing is written for them — fix the source and re-import.`,
+      head(['Key','Line','Vendor','Product Line','Family','Color','Decoration']) +
+      p.collisions.map(c => c.rows.map((r, i) =>
+        `<tr>${i === 0 ? `<td class="mono" rowspan="${c.rows.length}">${esc(c.id.split('__').slice(1).join(' / '))}</td>` : ''}` +
+        `<td class="muted">${r._line}</td><td>${esc(r.vendor)}</td><td>${esc(r.productLine)}</td>` +
+        `<td>${esc(r.family)}</td><td>${esc(r.color)}</td><td>${esc(r.decoration) || '—'}</td></tr>`).join('')).join('') +
+      '</tbody></table>');
+  }
+  if (p.skippedNoVendor.length) {
+    h += section('Skipped — swatch number but no vendor', 'warn',
+      `${p.skippedNoVendor.length} rows have a swatch number and nothing else. Not importable without a vendor, since vendor is half the key.`,
+      head(['Line','Swatch']) + p.skippedNoVendor.slice(0, 200).map(r =>
+        `<tr><td class="muted">${r._line}</td><td class="mono">${esc(r.swatchNumber)}</td></tr>`).join('') + '</tbody></table>');
+  }
+  if (p.skippedNoSwatch.length) {
+    h += section('Skipped — no swatch number', 'warn',
+      `${p.skippedNoSwatch.length} rows have content but no swatch number, so they have no stable identity across imports.`,
+      head(['Line','Vendor','Product Line','Family','Color']) + p.skippedNoSwatch.slice(0, 200).map(r =>
+        `<tr><td class="muted">${r._line}</td><td>${esc(r.vendor)}</td><td>${esc(r.productLine)}</td><td>${esc(r.family)}</td><td>${esc(r.color)}</td></tr>`).join('') +
+      '</tbody></table>');
+  }
+  if (p.exactDupes.length) {
+    h += section('Identical duplicate rows — merged', 'info',
+      `${p.exactDupes.length} ${p.exactDupes.length === 1 ? 'key appears' : 'keys appear'} more than once with identical values. Safe to collapse; imported once.`,
+      head(['Key','Times']) + p.exactDupes.map(d =>
+        `<tr><td class="mono">${esc(d.id.split('__').slice(1).join(' / '))}</td><td class="muted">${d.rows.length}</td></tr>`).join('') + '</tbody></table>');
+  }
+  const applied = S.vendorMap.merges.filter(m => m.apply);
+  if (applied.length) {
+    h += section('Vendor spellings normalized', 'info', `${applied.length} applied.`,
+      head(['From','To','Rows']) + applied.map(m =>
+        `<tr><td class="mono">${esc(m.from)}</td><td class="mono">${esc(m.to)}</td><td class="muted">${m.count}</td></tr>`).join('') + '</tbody></table>');
+  }
+  return h || `<div class="empty">No exceptions. Clean file.</div>`;
+}
+const more = n => n > 500 ? `<div class="empty">Showing first 500 of ${n.toLocaleString()}. Download the payload for the full list.</div>` : '';
+const section = (title, kind, note, tbl) =>
+  `<div style="padding:var(--scale-400) var(--scale-400) 0">
+     <div class="note ${kind === 'info' ? '' : kind}"><b>${title}</b><br>${note}</div></div>${tbl}`;
+
+$('back2').onclick = () => goto(2);
+$('toStep4').onclick = () => { renderApply(); goto(4); };
+
+/* ---- downloads ---- */
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+const csvCell = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+
+$('dlExc').onclick = () => {
+  const p = S.parsed, L = [['issue','line','key','vendor','swatch','productLine','family','color','decoration','detail']];
+  p.collisions.forEach(c => c.rows.forEach(r =>
+    L.push(['duplicate key', r._line, c.id, r.vendor, r.swatchNumber, r.productLine, r.family, r.color, r.decoration, 'excluded — fix in spreadsheet'])));
+  p.skippedNoVendor.forEach(r => L.push(['no vendor', r._line, '', '', r.swatchNumber, r.productLine, r.family, r.color, r.decoration, 'skipped']));
+  p.skippedNoSwatch.forEach(r => L.push(['no swatch number', r._line, '', r.vendor, '', r.productLine, r.family, r.color, r.decoration, 'skipped']));
+  p.exactDupes.forEach(d => L.push(['identical duplicate', d.rows[0]._line, d.id, d.rows[0].vendor, d.rows[0].swatchNumber, '', '', '', '', d.rows.length + ' identical rows merged']));
+  S.vendorMap.merges.filter(m => m.apply).forEach(m => L.push(['vendor normalized', '', '', m.from, '', '', '', '', '', 'merged into ' + m.to + ' (' + m.count + ' rows)']));
+  download(`material-import-exceptions-${S.category}.csv`, L.map(r => r.map(csvCell).join(',')).join('\n'), 'text/csv');
+};
+
+$('dlJson').onclick = () => {
+  const clean = r => { const o = {}; SHEET_FIELDS.forEach(f => o[f] = r[f]); return { id: r.id, categoryId: r.categoryId, ...o }; };
+  download(`material-payload-${S.category}.json`, JSON.stringify({
+    category: S.category, sourceFile: S.fileName, generated: new Date().toISOString(),
+    counts: { add: S.diff.add.length, change: S.diff.change.length, same: S.diff.same.length,
+              deactivate: S.diff.gone.length, excluded: S.parsed.collisions.length },
+    add: S.diff.add.map(clean), change: S.diff.change.map(clean),
+    deactivate: S.diff.gone.map(r => r.id),
+  }, null, 2), 'application/json');
+};
+
+/* ============================================================
+   STEP 4 — apply
+   ============================================================ */
+function renderApply() {
+  const { add, change, gone } = S.diff;
+  const writes = add.length + change.length, deacts = gone.length;
+  const b = $('applyBody');
+  b.innerHTML = '';
+
+  if (!S.db) {
+    b.innerHTML = '<div class="note err"><b>Not connected.</b> Add a Firebase config above to write. ' +
+      'You can still download the payload and exceptions from step 3 — those work offline.</div>';
+    return;
+  }
+  if (!writes && !deacts) {
+    b.innerHTML = '<div class="note ok"><b>Nothing to do.</b> The catalog already matches this CSV.</div>';
+    return;
+  }
+
+  const c = el('div', 'confirm');
+  c.innerHTML = '<h3>Confirm before writing</h3><ul>' +
+    (add.length    ? `<li><b>${add.length.toLocaleString()}</b> new materials created</li>` : '') +
+    (change.length ? `<li><b>${change.length.toLocaleString()}</b> updated — spreadsheet fields only; <code class="k">rollWidth</code>, <code class="k">patternSensitive</code>, <code class="k">decorationEligible</code> and <code class="k">notes</code> are preserved</li>` : '') +
+    (deacts        ? `<li><b>${deacts.toLocaleString()}</b> marked inactive — hidden from the picker, still readable on existing jobs. Not deleted.</li>` : '') +
+    (S.parsed.collisions.length ? `<li><b>${S.parsed.collisions.length}</b> duplicate-key materials <b>skipped</b> — fix in the spreadsheet</li>` : '') +
+    `</ul><div class="actions"><button class="btn-danger" id="doApply">Write ${(writes + deacts).toLocaleString()} changes to Firestore</button>
+     <button class="btn-ghost" id="back3">← Back to review</button></div>`;
+  b.append(c);
+  $('back3').onclick = () => goto(3);
+  $('doApply').onclick = runApply;
+}
+
+async function runApply() {
+  const btn = $('doApply'); btn.disabled = true; btn.textContent = 'Writing…';
+  const { doc, writeBatch, serverTimestamp } = S.fb;
+  const { add, change, gone } = S.diff;
+  const ops = [
+    ...add.map(r => ({ r, mode: 'set' })),
+    ...change.map(r => ({ r, mode: 'set' })),
+    ...gone.map(r => ({ r, mode: 'deactivate' })),
+  ];
+  const prog = el('div', 'bar', '<i></i>'); $('applyBody').append(prog);
+  const status = el('div', 'note', 'Writing 0 of ' + ops.length + '…'); $('applyBody').append(status);
+
+  try {
+    for (let i = 0; i < ops.length; i += BATCH_MAX) {
+      const chunk = ops.slice(i, i + BATCH_MAX);
+      const batch = writeBatch(S.db);
+      for (const { r, mode } of chunk) {
+        const ref = doc(S.db, 'materials', r.id);
+        if (mode === 'deactivate') batch.set(ref, { active: false, updatedAt: serverTimestamp() }, { merge: true });
+        else {
+          const payload = { categoryId: S.category, active: true, source: 'csv',
+            sourceFile: S.fileName, updatedAt: serverTimestamp() };
+          SHEET_FIELDS.forEach(f => payload[f] = r[f]);
+          batch.set(ref, payload, { merge: true });   // merge preserves TOOL_FIELDS
+        }
+      }
+      await batch.commit();
+      const done = Math.min(i + BATCH_MAX, ops.length);
+      prog.querySelector('i').style.width = (done / ops.length * 100) + '%';
+      status.textContent = `Writing ${done.toLocaleString()} of ${ops.length.toLocaleString()}…`;
+    }
+    status.className = 'note ok';
+    status.innerHTML = `<b>Done.</b> ${ops.length.toLocaleString()} changes written to <code class="k">materials</code>. ` +
+      (S.parsed.collisions.length ? `${S.parsed.collisions.length} duplicate-key materials were skipped — see the exceptions CSV.` : '');
+    btn.textContent = 'Applied';
+    S.existing = await fetchExisting(S.category);
+    S.diff = diffAgainst(S.parsed.records, S.existing);
+  } catch (err) {
+    status.className = 'note err';
+    status.innerHTML = '<b>The write failed partway through.</b><br>' + esc(err.message) +
+      '<br><span class="muted">Firestore writes are batched, so completed batches are saved. ' +
+      'Re-running the import is safe — it only writes what still differs. ' +
+      'If this says “permission denied”, the security rules are blocking writes to <code class="k">materials</code>.</span>';
+    btn.disabled = false; btn.textContent = 'Retry';
+  }
+}
+
+/* ============================================================
+   FIREBASE
+   ============================================================ */
+async function connect(cfg) {
+  const [{ initializeApp }, fs] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js'),
+  ]);
+  const app = initializeApp(cfg, 'plpc-' + Date.now());
+  S.fb = fs; S.db = fs.getFirestore(app);
+  return fs;
+}
+function setCfgStatus(ok, label) {
+  $('cfgDot').className = 'dot ' + (ok ? 'on' : 'off');
+  $('cfgLabel').textContent = label;
+}
+$('cfgSave').onclick = async () => {
+  const msg = $('cfgMsg');
+  let cfg;
+  try {
+    let t = $('cfgText').value.trim().replace(/^(const|let|var)\s+\w+\s*=\s*/, '').replace(/;+\s*$/, '');
+    cfg = JSON.parse(t.startsWith('{') && !/"\s*:/.test(t) ? t.replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":').replace(/'/g, '"') : t);
+  } catch {
+    msg.textContent = 'That isn’t valid JSON — paste the whole { … } object from the console.'; return;
+  }
+  if (!cfg.projectId) { msg.textContent = 'Missing projectId.'; return; }
+  msg.textContent = 'Connecting…';
+  try {
+    await connect(cfg);
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    setCfgStatus(true, cfg.projectId);
+    msg.textContent = 'Connected.';
+    $('cfgBox').open = false;
+    if (S.parsed) { await prepareDiff(); renderApply(); }
+  } catch (err) { msg.textContent = 'Could not connect: ' + err.message; }
+};
+$('cfgClear').onclick = () => {
+  localStorage.removeItem(CFG_KEY); $('cfgText').value = '';
+  S.db = null; S.fb = null; setCfgStatus(false, 'not configured'); $('cfgMsg').textContent = 'Cleared.';
+};
+
+(async function init() {
+  const saved = localStorage.getItem(CFG_KEY);
+  try {
+    const cfg = saved ? JSON.parse(saved) : DEFAULT_CFG;
+    $('cfgText').value = JSON.stringify(cfg, null, 2);
+    await connect(cfg);
+    setCfgStatus(true, cfg.projectId);
+  } catch (err) {
+    setCfgStatus(false, 'could not reach Firebase');
+    $('cfgMsg').textContent = 'Could not load the Firebase SDK — check your connection, then reopen this page. (' + err.message + ')';
+    $('cfgBox').open = true;
+  }
+})();
+</script>
+</body>
+</html>
