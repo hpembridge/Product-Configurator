@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<!--
+  Platinum — Product Configurator
+  00-PL-PC · the merged MCS + Bindery Leadtime Calculator surface
+
+  One job record, two interfaces onto it (merge plan §8):
+    Creative — lanes PROOFING / PROTOTYPING, INPUTS is the configurator
+    Bindery  — lanes INCOMING / IN PRODUCTION, INPUTS is a read-only config
+               summary plus the yield fields Bindery owns
+
+  Reference data (materials, hardware, decorations, departments, escalation)
+  is authored in reference-data (material-import.html) and read here. Nothing
+  in this file defines reference data — if a list looks wrong, it is wrong in
+  the other tool.
+
+  Derived values are never stored (plan §5): tier, departments and due date
+  are computed on read from the escalation rules, every time.
+
+  Design tokens come from the PL-SHARED submodule. No build step.
+-->
+<html lang="en" data-theme="titanium">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Configurator — Platinum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/css/design-tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg-page); color: var(--text-primary);
+    font-family: var(--font-family-primary, "Google Sans Flex"), system-ui, sans-serif;
+    font-size: var(--fontsize-body-md);
+  }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: var(--scale-500) var(--scale-500) var(--scale-1200); }
+
+  header.app { display: flex; align-items: center; gap: var(--scale-400); flex-wrap: wrap; margin-bottom: var(--scale-400); }
+  header.app h1 { font-size: var(--fontsize-heading-h6); margin: 0; font-weight: 600; }
+  header.app .sub { color: var(--text-tertiary); font-size: var(--fontsize-body-sm); }
+  header.app .spacer { flex: 1; }
+
+  .modenav { display: inline-flex; gap: 2px; background: var(--bg-subtle); border-radius: var(--border-radius-full); padding: 3px; }
+  .modenav button {
+    background: none; border: none; border-radius: var(--border-radius-full); cursor: pointer;
+    padding: var(--scale-200) var(--scale-500); font-family: inherit; font-size: var(--fontsize-body-sm);
+    font-weight: 600; color: var(--text-tertiary);
+  }
+  .modenav button.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+
+  .who { display: flex; align-items: center; gap: var(--scale-200); font-size: var(--fontsize-body-sm); color: var(--text-secondary); }
+  .who .av { width: 28px; height: 28px; border-radius: var(--border-radius-full); background: var(--interactive-default);
+    color: #fff; display: grid; place-items: center; font-weight: 700; font-size: var(--fontsize-label); }
+
+  input[type=text], input[type=number], select, textarea {
+    font-family: inherit; font-size: var(--fontsize-body-md); color: var(--text-primary);
+    background: var(--bg-surface); border: 1px solid var(--border-subtle);
+    border-radius: var(--border-radius-sm); padding: var(--scale-200) var(--scale-300); width: 100%;
+  }
+  select:focus, input:focus, textarea:focus { outline: 2px solid var(--border-focus); outline-offset: 1px; }
+  textarea { min-height: 70px; resize: vertical; }
+  label.fld { display: block; font-size: var(--fontsize-label); text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-tertiary); font-weight: 700; margin-bottom: var(--scale-100); }
+
+  .searchbar { margin-bottom: var(--scale-400); }
+
+  /* ---- board: lanes + inputs ---- */
+  .board { display: grid; grid-template-columns: 230px 230px minmax(0, 1fr); gap: var(--scale-400); align-items: start; }
+  @media (max-width: 1100px) { .board { grid-template-columns: 1fr; } }
+
+  .lane { border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md);
+    background: var(--bg-surface); min-height: 320px; display: flex; flex-direction: column; }
+  .lane > h2 { margin: 0; padding: var(--scale-300) var(--scale-400); font-size: var(--fontsize-label);
+    text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); font-weight: 700;
+    border-bottom: 1px solid var(--border-tertiary); display: flex; justify-content: space-between; }
+  .lane .cards { padding: var(--scale-300); display: flex; flex-direction: column; gap: var(--scale-300); }
+
+  .jobcard { border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md);
+    padding: var(--scale-300); background: var(--bg-surface); cursor: pointer; text-align: left;
+    font-family: inherit; width: 100%; display: block; }
+  .jobcard:hover { border-color: var(--interactive-default); }
+  .jobcard.sel { border-color: var(--interactive-default); background: var(--interactive-bg-subtle);
+    box-shadow: inset 3px 0 0 var(--interactive-default); }
+  .jobcard .num { font-weight: 700; font-size: var(--fontsize-body-md); }
+  .jobcard .desc { font-size: var(--fontsize-body-sm); color: var(--text-secondary); margin-bottom: var(--scale-200); }
+  .jobcard .cust { font-size: var(--fontsize-body-sm); font-weight: 600; }
+  .jobcard .mg { font-size: var(--fontsize-label); text-transform: uppercase; letter-spacing: .05em; color: var(--text-tertiary); }
+  .jobcard .tierpill { margin-top: var(--scale-200); }
+
+  .panel { border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-lg);
+    background: var(--bg-surface); padding: var(--scale-500); min-height: 520px; }
+  .panel .empty { padding: var(--scale-1200) var(--scale-500); text-align: center; color: var(--text-tertiary); }
+
+  .band { font-size: var(--fontsize-label); text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-tertiary); font-weight: 700; border-bottom: 1px solid var(--border-tertiary);
+    padding-bottom: var(--scale-200); margin: var(--scale-600) 0 var(--scale-400); }
+  .band:first-of-type { margin-top: 0; }
+  .row { display: flex; gap: var(--scale-400); flex-wrap: wrap; }
+  .row > * { flex: 1 1 160px; }
+  .row > .shrink { flex: 0 0 auto; }
+
+  .pill-s { display: inline-block; padding: 1px 8px; border-radius: var(--border-radius-full);
+    font-size: var(--fontsize-label); font-weight: 700; }
+  .pill-new  { background: var(--status-success-bg); color: var(--status-success-border); border: 1px solid var(--status-success-border); }
+  .pill-warn2{ background: var(--status-warning-bg); color: var(--status-warning-border); border: 1px solid var(--status-warning-border); }
+  .pill-err  { background: var(--status-error-bg);   color: var(--status-error-border);   border: 1px solid var(--status-error-border); }
+  .pill-info { background: var(--status-info-bg);    color: var(--status-info-border);    border: 1px solid var(--status-info-border); }
+
+  .t1 { background: var(--status-success-bg); color: var(--status-success-border); border: 1px solid var(--status-success-border); }
+  .t2 { background: var(--status-info-bg);    color: var(--status-info-border);    border: 1px solid var(--status-info-border); }
+  .t3 { background: var(--status-warning-bg); color: var(--status-warning-border); border: 1px solid var(--status-warning-border); }
+  .t4 { background: var(--status-error-bg);   color: var(--status-error-border);   border: 1px solid var(--status-error-border); }
+
+  /* ---- live tier readout ---- */
+  .tierbox { border: 1px solid var(--border-tertiary); border-left-width: 4px; border-radius: var(--border-radius-md);
+    padding: var(--scale-400); margin-bottom: var(--scale-500); background: var(--bg-muted); }
+  .tierbox.t1 { border-left-color: var(--status-success-border); }
+  .tierbox.t2 { border-left-color: var(--status-info-border); }
+  .tierbox.t3 { border-left-color: var(--status-warning-border); }
+  .tierbox.t4 { border-left-color: var(--status-error-border); }
+  .tierbox .hd { display: flex; align-items: baseline; gap: var(--scale-300); flex-wrap: wrap; }
+  .tierbox .big { font-size: var(--fontsize-heading-h6); font-weight: 700; }
+  .tierbox .why { margin-top: var(--scale-300); font-size: var(--fontsize-body-sm); color: var(--text-secondary); }
+  .tierbox .why li { margin: 2px 0; }
+  .tierbox ul { margin: var(--scale-200) 0 0; padding-left: 18px; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-family: inherit; border: 1px solid var(--border-tertiary); background: var(--bg-surface);
+    border-radius: var(--border-radius-full); padding: 4px 11px; font-size: var(--fontsize-body-sm);
+    cursor: pointer; color: var(--text-secondary); }
+  .chip.on { border-color: var(--interactive-default); background: var(--interactive-bg-subtle);
+    color: var(--text-primary); font-weight: 600; }
+
+  .slot { border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md);
+    padding: var(--scale-300); margin-bottom: var(--scale-300); background: var(--bg-muted); }
+  .slot .hdr { display: flex; justify-content: space-between; align-items: center; gap: var(--scale-300); margin-bottom: var(--scale-200); }
+  .slot .hdr b { font-size: var(--fontsize-body-sm); }
+  .iconbtn { background: none; border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-sm);
+    width: 24px; height: 24px; cursor: pointer; color: var(--text-tertiary); font-family: inherit; line-height: 1; }
+  .iconbtn:hover { border-color: var(--status-error-border); color: var(--status-error-border); }
+
+  .btn-primary { background: var(--interactive-default); color: #fff; border: none;
+    border-radius: var(--border-radius-full); padding: var(--scale-200) var(--scale-500);
+    font-family: inherit; font-size: var(--fontsize-body-sm); font-weight: 700; cursor: pointer; }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-ghost { background: none; border: none; color: var(--text-interactive); font-family: inherit;
+    font-size: var(--fontsize-body-sm); font-weight: 600; cursor: pointer; padding: var(--scale-100) var(--scale-200); }
+  .actions { display: flex; gap: var(--scale-300); align-items: center; flex-wrap: wrap; margin-top: var(--scale-400); }
+  .actions .spacer { flex: 1; }
+
+  /* ---- material picker ---- */
+  .pick { position: relative; }
+  .pick-results { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; max-height: 260px; overflow: auto;
+    background: var(--bg-surface); border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md);
+    box-shadow: 0 6px 20px rgb(0 0 0 / .12); }
+  .pick-results button { display: block; width: 100%; text-align: left; border: none; background: none;
+    padding: var(--scale-200) var(--scale-300); font-family: inherit; font-size: var(--fontsize-body-sm); cursor: pointer;
+    border-bottom: 1px solid var(--border-tertiary); }
+  .pick-results button:hover { background: var(--interactive-bg-subtle); }
+  .pick-results .k { font-weight: 700; }
+  .pick-results .m { color: var(--text-tertiary); }
+
+  .note { border-left: 3px solid var(--border-default); background: var(--bg-muted);
+    padding: var(--scale-300) var(--scale-400); border-radius: var(--border-radius-sm);
+    font-size: var(--fontsize-body-sm); margin: var(--scale-300) 0; }
+  .note.warn { border-left-color: var(--status-warning-border); background: var(--status-warning-bg); }
+  .note.err  { border-left-color: var(--status-error-border); background: var(--status-error-bg); }
+  .muted { color: var(--text-tertiary); }
+  .mono { font-family: var(--font-family-mono, ui-monospace, monospace); }
+  .ro { background: var(--bg-subtle); color: var(--text-secondary); }
+  dl.sum { display: grid; grid-template-columns: max-content 1fr; gap: 4px var(--scale-400); margin: 0; font-size: var(--fontsize-body-sm); }
+  dl.sum dt { color: var(--text-tertiary); }
+  dl.sum dd { margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app">
+    <h1>Product Configurator</h1>
+    <span class="sub">Platinum · 00-PL-PC</span>
+    <div class="modenav" id="modenav">
+      <button class="active" data-m="creative">Creative</button>
+      <button data-m="bindery">Bindery</button>
+    </div>
+    <span class="spacer"></span>
+    <span id="dataStatus" class="sub"></span>
+    <div class="who" id="who"></div>
+    <button class="btn-primary" id="newJob">+ New job</button>
+  </header>
+
+  <div id="refWarn"></div>
+
+  <div class="searchbar"><input type="text" id="search" placeholder="Search jobs — number, product, customer, management group"></div>
+
+  <div class="board">
+    <div class="lane"><h2><span id="laneATitle">—</span><span id="laneACount" class="muted"></span></h2><div class="cards" id="laneA"></div></div>
+    <div class="lane"><h2><span id="laneBTitle">—</span><span id="laneBCount" class="muted"></span></h2><div class="cards" id="laneB"></div></div>
+    <div class="panel" id="panel"><div class="empty">Pick a job, or create one.</div></div>
+  </div>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+const CFG_KEY = 'plpc_firebase_config';
+const USER_KEY = 'plpc_user';
+const CACHE_KEY = 'plpc_refcache';     // reference data snapshot
+const OFFLINE_KEY = 'plpc_offline';    // hard off switch
+
+/* Firestore bills one read per document returned, and `materials` alone is
+   ~1,100 docs — so a naive boot cost ~1,141 reads every reload. Against the
+   50k/day free tier that is ~44 loads before lockout, which a Live Server
+   auto-reload burns through in an afternoon.
+
+   So: reference data is cached in localStorage and reused until explicitly
+   refreshed. It changes when someone runs an import, not between page loads.
+   Offline mode goes further and never opens a connection at all. */
+const readCache = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; } };
+const writeCache = o => { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...o, at: Date.now() })); } catch {} };
+const isOffline = () => localStorage.getItem(OFFLINE_KEY) === '1';
+const ago = ts => {
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.round(m / 60);
+  return h < 24 ? h + 'h ago' : Math.round(h / 24) + 'd ago';
+};
+const DEFAULT_CFG = {
+  apiKey: "AIzaSyBqOKQZLPWjnwLcHKNJhCJPOvfmYQNQyGE",
+  authDomain: "menu-product-configurator.firebaseapp.com",
+  projectId: "menu-product-configurator",
+  storageBucket: "menu-product-configurator.firebasestorage.app",
+  messagingSenderId: "402216545561",
+  appId: "1:402216545561:web:9e0e8f4c8c1c3f3d5a5c1e"
+};
+
+/* Lanes. Creative's two come off the MCS stage toggle. Bindery's come off a
+   separate prodStatus, because "Production" spans both Bindery lanes — the
+   open question in plan §8. Default a job to incoming when it hits production. */
+const MODES = {
+  creative: { lanes: [
+    { id: 'proof',     title: 'Proofing',     match: j => j.stage === 'proof' },
+    { id: 'prototype', title: 'Prototyping',  match: j => j.stage === 'prototype' },
+  ] },
+  bindery: { lanes: [
+    { id: 'incoming',   title: 'Incoming',      match: j => j.stage === 'production' && (j.prodStatus || 'incoming') === 'incoming' },
+    { id: 'production', title: 'In Production', match: j => j.stage === 'production' && j.prodStatus === 'production' },
+  ] },
+};
+
+const S = { fb: null, db: null, mode: 'creative', jobs: [], sel: null, search: '', dirty: false, saving: false,
+            ref: { materials: [], hardware: [], decorations: [], departments: [], escalation: [], matcats: {}, offsets: {} } };
+
+/* ---------------------------------------------------------------- identity
+   Plan §6 calls for email sign-in links. That is not built yet, so this is the
+   Sprint Tracker pattern plus the department field §6 says is missing — enough
+   to drive which interface you land in and to stamp who edited what. It is not
+   security: nothing here is enforced by rules. */
+function loadUser() {
+  try { return JSON.parse(localStorage.getItem(USER_KEY)) || null; } catch { return null; }
+}
+let USER = loadUser();
+function renderWho() {
+  const w = $('who');
+  if (!USER) { w.innerHTML = '<button class="btn-ghost" id="setWho">Set your name</button>';
+    $('setWho').onclick = askWho; return; }
+  w.innerHTML = `<span class="av">${esc((USER.name || '?').slice(0,1).toUpperCase())}</span>` +
+    `<span>${esc(USER.name)} · <span class="muted">${esc(USER.department)}</span></span>` +
+    '<button class="btn-ghost" id="setWho">change</button>';
+  $('setWho').onclick = askWho;
+}
+function askWho() {
+  const name = (prompt('Your name:', USER?.name || '') || '').trim();
+  if (!name) return;
+  const dept = (prompt('Department — creative or bindery:', USER?.department || 'creative') || '').trim().toLowerCase();
+  USER = { name, department: dept === 'bindery' ? 'bindery' : 'creative' };
+  localStorage.setItem(USER_KEY, JSON.stringify(USER));
+  renderWho();
+  setMode(USER.department);
+}
+
+/* ---------------------------------------------------------------- firebase */
+async function connect(cfg) {
+  const [{ initializeApp }, fs] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js'),
+  ]);
+  const app = initializeApp(cfg);
+  S.fb = fs; S.db = fs.getFirestore(app);
+  return fs;
+}
+
+function applyRef(c) {
+  S.ref.materials   = c.materials   || [];
+  S.ref.hardware    = c.hardware    || [];
+  S.ref.decorations = c.decorations || [];
+  S.ref.departments = c.departments || [];
+  S.ref.escalation  = c.escalation  || [];
+  S.ref.matcats     = c.matcats     || {};
+  S.ref.offsets     = c.offsets     || {};
+  if (c.jobs) S.jobs = c.jobs;
+}
+
+async function loadAll(force) {
+  const cache = readCache();
+  if (!force && cache && (isOffline() || cache.materials)) {
+    applyRef(cache);
+    S.cacheAt = cache.at;
+    S.fromCache = true;
+    renderStatus();
+    return;
+  }
+  if (isOffline()) {
+    $('refWarn').innerHTML = '<div class="note warn"><b>Offline, and nothing cached yet.</b> ' +
+      'Switch to live once to pull a snapshot, then offline works from it.</div>';
+    return;
+  }
+  const { collection, getDocs } = S.fb;
+  const names = ['jobs', 'materials', 'hardware', 'decorations', 'departments', 'escalation', 'materialCategories', 'settings'];
+  const snaps = await Promise.all(names.map(n => getDocs(collection(S.db, n))));
+  const grab = i => { const out = []; snaps[i].forEach(d => out.push({ id: d.id, ...d.data() })); return out; };
+  const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999);
+  S.jobs = grab(0);
+  S.ref.materials   = grab(1);
+  S.ref.hardware    = grab(2).sort(byOrder);
+  S.ref.decorations = grab(3).sort(byOrder);
+  S.ref.departments = grab(4).sort(byOrder);
+  S.ref.escalation  = grab(5).sort(byOrder);
+  S.ref.matcats = {}; grab(6).forEach(c => (S.ref.matcats[c.id] = c));
+  // settings/offsets holds the global defaults; absent is fine, BC-00's values stand in.
+  S.ref.offsets = (grab(7).find(d => d.id === 'offsets') || {}).byBindingType || {};
+
+  // One snapshot, reused until someone asks for a fresh one.
+  writeCache({ jobs: S.jobs, materials: S.ref.materials, hardware: S.ref.hardware,
+               decorations: S.ref.decorations, departments: S.ref.departments,
+               escalation: S.ref.escalation, matcats: S.ref.matcats, offsets: S.ref.offsets });
+  S.cacheAt = Date.now(); S.fromCache = false;
+  renderStatus();
+
+  const missing = [];
+  if (!S.ref.materials.length)   missing.push('materials');
+  if (!S.ref.hardware.length)    missing.push('hardware');
+  if (!S.ref.decorations.length) missing.push('decorations');
+  if (!S.ref.departments.length) missing.push('departments');
+  if (!S.ref.escalation.length)  missing.push('escalation rules');
+  $('refWarn').innerHTML = missing.length
+    ? `<div class="note warn"><b>Reference data missing:</b> ${missing.map(esc).join(', ')}. ` +
+      'Seed it in the Reference Data tool first — this screen reads that data and cannot invent it.</div>'
+    : '';
+}
+
+/* Offsets, lifted from BC-00 (bindery-calculator.js state.settings.offsets).
+   Vertical/horizontal per binding type, added twice — once each side — to the
+   insert size to get the cut dimension. Decision 11: global default owned by
+   Bindery and the Creative lead, with a per-job override.
+
+   BC-00 keyed these by its own binding names. Three map onto hardware types we
+   actually have; the other two (interiorBoards, slidePocket) belong to corners,
+   tabs and pockets, which are deferred. Anything unmapped falls back to the
+   0.25 BC-00 uses for most groups. */
+const OFFSET_DEFAULTS = {
+  'ring-binder':   { vertical: 0.25, horizontal: 0.375 },   // BC-00 "rings"
+  'screw-posts':   { vertical: 0.25, horizontal: 0.375 },   // BC-00 "screwpost"
+  'elastic-cords': { vertical: 0.5,  horizontal: 0.25  },   // BC-00 "cord"
+  _fallback:       { vertical: 0.25, horizontal: 0.25  },
+};
+const globalOffset = id => S.ref.offsets[id] || OFFSET_DEFAULTS[id] || OFFSET_DEFAULTS._fallback;
+// Per-job override wins over the global default, per dimension.
+const effOffset = (job, id) => {
+  const g = globalOffset(id), o = (job.offsetOverrides || {})[id] || {};
+  return { vertical:   o.vertical   != null && o.vertical   !== '' ? +o.vertical   : g.vertical,
+           horizontal: o.horizontal != null && o.horizontal !== '' ? +o.horizontal : g.horizontal };
+};
+
+/* Insert sizes are linked to the job by default — one size the whole piece is
+   built around — because that is the normal case. BC-00 carries a separate
+   insertSize per binding type, so unlinking has to stay possible. */
+const jobInsert = job => job.insertSize || (job.insertSize = { width: '', height: '', inserts: '', carriers: '' });
+const rowInsert = (job, row) => (row.linkInsert === false && row.insertSize) ? row.insertSize : jobInsert(job);
+const fmtInsert = i => (i.width && i.height) ? `${i.width} × ${i.height}` : 'not set';
+
+// Decision 15: each panel has two sides, so the shared cap is panelCount × 2.
+const panelCap = job => (parseInt(job.panelCount, 10) || 0) * 2;
+
+/* ================================================================
+   DERIVED — departments, tier, due date
+   Nothing here is stored. Recomputed on every render, from the
+   escalation rules and department tags authored in Reference Data.
+   ================================================================ */
+
+// Which departments this job pulls in, and what put them there.
+function inferDepartments(job) {
+  const hits = new Map();   // deptId -> [reasons]
+  const add = (id, why) => { if (!hits.has(id)) hits.set(id, []); hits.get(id).push(why); };
+
+  (job.decorations || []).forEach(d => {
+    const def = S.ref.decorations.find(x => x.id === d.typeId);
+    (def?.departments || []).forEach(dep => add(dep, `${def.label} decoration`));
+  });
+  (job.materials || []).forEach(m => {
+    if (!m.materialId) return;
+    const mat = S.ref.materials.find(x => x.id === m.materialId);
+    if (!mat) return;
+    (S.ref.matcats[mat.categoryId]?.departments || []).forEach(dep =>
+      add(dep, `${mat.categoryId} material`));
+  });
+  return hits;
+}
+
+/* A department rule can carry a qualifier — today only Metal Shop does, split
+   by whether the job is tip-in only. That comes off the Diecut Window
+   decoration's Tip-In field, so it is answerable from the record. Any other
+   qualifier is reported as unevaluated rather than quietly assumed true. */
+function tipInOnly(job) {
+  const dc = (job.decorations || []).find(d => d.typeId === 'diecut');
+  return !!dc && String(dc.values?.tipIn || '').toLowerCase() === 'yes';
+}
+function qualifierHolds(rule, job) {
+  const q = (rule.qualifier || '').toLowerCase();
+  if (!q) return true;
+  // Order matters: the tier-3 qualifier reads "full metal work (Tip-In not set)",
+  // which contains the substring "tip-in" while meaning the opposite. Test the
+  // negative phrasings before the bare mention.
+  if (q.includes('full') || q.includes('not set')) return !tipInOnly(job);
+  if (q.includes('tip-in only') || q.includes('tip-in'))  return tipInOnly(job);
+  return null;   // unknown qualifier — do not guess
+}
+
+function computeTier(job) {
+  const depts = inferDepartments(job);
+  const reasons = [], unevaluated = [];
+  let tier = 1;
+  const fire = (n, text) => { if (n > tier) tier = n; reasons.push({ level: n, text }); };
+
+  S.ref.escalation.forEach(t => {
+    const level = parseInt(t.id, 10);
+    (t.rules || []).forEach(r => {
+      if (r.type === 'qty') {
+        const q = parseInt(job.quantity, 10) || 0;
+        const ok = r.op === '≥' ? q >= r.value : q > r.value;
+        if (ok) fire(level, `Quantity (${q.toLocaleString()}) ${r.op || '>'} ${Number(r.value).toLocaleString()}`);
+      } else if (r.type === 'department') {
+        if (!depts.has(r.id)) return;
+        const label = S.ref.departments.find(d => d.id === r.id)?.label || r.id;
+        const held = qualifierHolds(r, job);
+        if (held === true) fire(level, `${label} required${r.qualifier ? ` — ${r.qualifier}` : ''}`);
+        else if (held === null) unevaluated.push(`${label} — “${r.qualifier}” can’t be evaluated from the record`);
+      } else if (r.type === 'decoration') {
+        if ((job.decorations || []).some(d => d.typeId === r.id))
+          fire(level, (S.ref.decorations.find(d => d.id === r.id)?.label || r.id) + ' specified');
+      } else if (r.type === 'binding') {
+        if ((job.binding || []).some(b => b.typeId === r.id))
+          fire(level, (S.ref.hardware.find(h => h.id === r.id)?.label || r.id) + ' binding');
+      } else if (r.type === 'condition') {
+        unevaluated.push(r.text + (r.gap ? ` — ${r.gap}` : ''));
+      }
+    });
+  });
+
+  const bucket = S.ref.escalation.find(t => parseInt(t.id, 10) === tier);
+  return { tier, label: bucket?.label || '', leadDays: bucket?.leadDays ?? null,
+           reasons, unevaluated: [...new Set(unevaluated)], depts };
+}
+
+// BLC's addWorkdays: weekdays only, holidays not modelled there either.
+function addWorkdays(from, days) {
+  const d = new Date(from.getTime());
+  let left = days;
+  while (left > 0) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) left--; }
+  return d;
+}
+const fmtDate = d => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+/* ================================================================
+   BOARD
+   ================================================================ */
+function setMode(m) {
+  // Switching interfaces re-renders the panel, and the new panel's Save button
+  // starts disabled — so unsaved edits would become unsavable without warning.
+  if (m !== S.mode && S.dirty && !confirm('This job has unsaved changes. Switching interfaces will lose them.')) return;
+  if (m !== S.mode) S.dirty = false;
+  S.mode = m;
+  $('modenav').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+  render();
+}
+$('modenav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-m]');
+  if (b) setMode(b.dataset.m);
+});
+$('search').addEventListener('input', e => { S.search = e.target.value.trim().toLowerCase(); renderLanes(); });
+
+function jobMatches(j) {
+  if (!S.search) return true;
+  return [j.jobNumber, j.description, j.customer, j.mgmtGroup].join(' ').toLowerCase().includes(S.search);
+}
+
+function renderLanes() {
+  const lanes = MODES[S.mode].lanes;
+  ['A', 'B'].forEach((k, i) => {
+    const lane = lanes[i];
+    $('lane' + k + 'Title').textContent = lane.title;
+    const box = $('lane' + k);
+    const rows = S.jobs.filter(j => lane.match(j)).filter(jobMatches)
+      .sort((a, b) => String(a.jobNumber).localeCompare(String(b.jobNumber), undefined, { numeric: true }));
+    $('lane' + k + 'Count').textContent = rows.length || '';
+    box.innerHTML = '';
+    if (!rows.length) { box.append(el('div', 'muted', '<span style="font-size:var(--fontsize-body-sm)">nothing here</span>')); return; }
+    rows.forEach(j => {
+      const b = el('button', 'jobcard' + (S.sel === j.id ? ' sel' : ''));
+      const t = S.mode === 'bindery' ? computeTier(j) : null;
+      b.innerHTML =
+        `<div class="num">${esc(j.jobNumber || '—')}</div>` +
+        `<div class="desc">${esc(j.description || 'No product description')}</div>` +
+        `<div class="cust">${esc(j.customer || '—')}</div>` +
+        `<div class="mg">${esc(j.mgmtGroup || '')}</div>` +
+        (t ? `<div class="tierpill"><span class="pill-s t${t.tier}">Tier ${t.tier}</span></div>` : '');
+      b.onclick = () => selectJob(j.id);
+      box.append(b);
+    });
+  });
+}
+
+function selectJob(id) {
+  if (S.dirty && !confirm('This job has unsaved changes. Leave them?')) return;
+  S.sel = id; S.dirty = false;
+  render();
+}
+
+function render() { renderLanes(); renderPanel(); }
+
+/* ================================================================
+   PANEL
+   ================================================================ */
+function renderPanel() {
+  const p = $('panel');
+  const job = S.jobs.find(j => j.id === S.sel);
+  if (!job) { p.innerHTML = '<div class="empty">Pick a job, or create one.</div>'; return; }
+  p.innerHTML = '';
+  // Tier is a Bindery concern. Escalation does not begin until the job reaches
+  // them, so showing a designer a tier while they configure would be quoting a
+  // number that has not started counting.
+  if (S.mode === 'bindery') p.append(tierBox(job));
+  if (S.mode === 'creative') renderCreative(p, job);
+  else renderBindery(p, job);
+}
+
+function tierBox(job) {
+  const t = computeTier(job);
+  // The clock starts when Bindery begins, not when Creative configures. Until
+  // that stamp exists there is no due date to quote — only a duration.
+  const started = job.binderyStartedAt ? new Date(job.binderyStartedAt) : null;
+  const due = (t.leadDays != null && started) ? fmtDate(addWorkdays(started, t.leadDays)) : null;
+  const box = el('div', 'tierbox t' + t.tier);
+  box.innerHTML =
+    `<div class="hd"><span class="big">Tier ${t.tier}</span>` +
+    `<span class="pill-s t${t.tier}">${esc(t.label)}</span>` +
+    (t.leadDays == null
+      ? '<span class="muted">no lead time — tier 4 means someone has to work it out</span>'
+      : due
+        ? `<span class="muted">${t.leadDays} working days from ${esc(fmtDate(started))} · due <b>${esc(due)}</b></span>`
+        : `<span class="muted">${t.leadDays} working days — clock starts when Bindery opens the job</span>`) +
+    '</div>' +
+    (t.depts.size
+      ? `<div class="why">Departments: ${[...t.depts.entries()].map(([id, why]) =>
+          `<span class="pill-s pill-info">${esc(S.ref.departments.find(d => d.id === id)?.label || id)}</span> ` +
+          `<span class="muted">(${esc([...new Set(why)].join(', '))})</span>`).join(' &nbsp; ')}</div>`
+      : '<div class="why muted">No departments pulled in.</div>') +
+    (t.reasons.length
+      ? `<div class="why"><b>Why:</b><ul>${t.reasons.map(r =>
+          `<li>Tier ${r.level} — ${esc(r.text)}</li>`).join('')}</ul></div>`
+      : '<div class="why muted">Nothing escalates this job — it sits on the floor tier.</div>') +
+    (t.unevaluated.length
+      ? `<div class="why"><b>Not evaluated:</b><ul>${t.unevaluated.map(u =>
+          `<li class="muted">${esc(u)}</li>`).join('')}</ul></div>`
+      : '');
+  return box;
+}
+
+/* ---------------------------------------------------------------- creative */
+function renderCreative(p, job) {
+  const mark = () => { S.dirty = true; $('save').disabled = false; renderLanes(); };
+  const field = (label, key, opts = {}) => {
+    const w = el('div');
+    if (opts.shrink) w.className = 'shrink';
+    w.append(el('label', 'fld', esc(label)));
+    const i = el('input'); i.type = 'text'; i.value = job[key] ?? '';
+    if (opts.width) i.style.width = opts.width;
+    if (opts.numeric) {
+      i.inputMode = 'numeric';
+      i.oninput = e => { job[key] = e.target.value.replace(/[^\d.]/g, ''); e.target.value = job[key]; mark(); if (opts.rerender) renderPanel(); };
+    } else {
+      i.oninput = e => { job[key] = e.target.value; mark(); };
+    }
+    w.append(i);
+    return w;
+  };
+
+  p.append(el('div', 'band', 'Job'));
+  const r1 = el('div', 'row');
+  r1.append(field('Job number', 'jobNumber'), field('Quantity', 'quantity', { numeric: true }),
+            field('Product description', 'description'));
+  p.append(r1);
+  const r2 = el('div', 'row');
+  r2.append(field('Customer', 'customer'), field('Management group', 'mgmtGroup'));
+  p.append(r2);
+  // Designer is not a field — it is whoever is working in Creative on this job.
+  p.append(el('div', 'muted', '<span style="font-size:var(--fontsize-body-sm)">Designer: <b>' +
+    esc(job.ownerName || USER?.name || 'you, once saved') + '</b> — taken from whoever creates and edits the job, not typed.</span>'));
+
+  p.append(el('div', 'band', 'Stage'));
+  const stages = el('div', 'chips');
+  [['proof', 'Proof'], ['prototype', 'Prototype'], ['production', 'Production']].forEach(([v, l]) => {
+    const b = el('button', 'chip' + (job.stage === v ? ' on' : ''), l);
+    b.onclick = () => { job.stage = v; if (v === 'production' && !job.prodStatus) job.prodStatus = 'incoming'; mark(); renderPanel(); };
+    stages.append(b);
+  });
+  p.append(stages);
+  p.append(el('p', 'muted', '<span style="font-size:var(--fontsize-body-sm)">The stage drives the lane. Releasing to production ' +
+    'hands the job to Bindery — and that is when the lead-time clock starts.</span>'));
+
+  /* Insert and panel specs — BC-00's model. One insert size the piece is built
+     around, plus the panel count that drives interior reveals. */
+  p.append(el('div', 'band', 'Insert & panel specs'));
+  const ins = jobInsert(job);
+  const insRow = el('div', 'row');
+  [['width', 'Insert width'], ['height', 'Insert height'], ['inserts', '# of inserts'], ['carriers', 'Carriers']].forEach(([k, label]) => {
+    const w = el('div');
+    w.append(el('label', 'fld', label));
+    const i = el('input'); i.type = 'text'; i.inputMode = 'numeric'; i.value = ins[k] ?? '';
+    i.oninput = e => { ins[k] = e.target.value.replace(/[^\d./]/g, ''); e.target.value = ins[k]; mark(); refreshLinked(); };
+    w.append(i);
+    insRow.append(w);
+  });
+  p.append(insRow);
+
+  const panelRow = el('div', 'row');
+  panelRow.append(field('Panel count', 'panelCount', { numeric: true, rerender: true }));
+  const cap = el('div');
+  cap.append(el('label', 'fld', 'Shared panel cap'));
+  cap.append(el('div', 'ro', `<div style="padding:var(--scale-200) var(--scale-300); border:1px solid var(--border-subtle); border-radius:var(--border-radius-sm)">` +
+    `${panelCap(job) || '—'} <span class="muted">= panel count × 2</span></div>`));
+  panelRow.append(cap);
+  p.append(panelRow);
+  p.append(el('div', 'muted', '<span style="font-size:var(--fontsize-body-sm)">Each panel has two sides, so the cap is twice the ' +
+    'panel count — pooled across interior boards, wrapped panels and Lexide panels.</span>'));
+
+  p.append(el('div', 'band', 'Cover size'));
+  const cov = el('div', 'row');
+  cov.append(field('Cover width', 'coverW'), field('Cover height', 'coverH'));
+  p.append(cov);
+
+  p.append(el('div', 'band', 'Materials'));
+  p.append(materialsEditor(job, mark));
+
+  p.append(el('div', 'band', 'Binding'));
+  p.append(defEditor(job, 'binding', S.ref.hardware.filter(h => h.isBinding && h.active !== false), mark, true));
+
+  p.append(el('div', 'band', 'Decoration'));
+  p.append(defEditor(job, 'decorations', S.ref.decorations.filter(d => d.active !== false), mark, false));
+
+  p.append(el('div', 'band', 'Notes'));
+  const ta = el('textarea'); ta.value = job.notes || '';
+  ta.oninput = e => { job.notes = e.target.value; mark(); };
+  p.append(ta);
+
+  const bar = el('div', 'actions');
+  bar.innerHTML = `<span class="muted" id="meta">${job.meta?.lastEditedBy
+    ? 'Last edited by ' + esc(job.meta.lastEditedBy.name) + ' (' + esc(job.meta.lastEditedBy.department) + ')' : 'Never saved'}</span>` +
+    '<span class="spacer"></span><button class="btn-primary" id="save" disabled>Save job</button>';
+  p.append(bar);
+  $('save').onclick = () => saveJob(job);
+
+  // Binding rows showing "linked" have to follow the job insert size as it is typed.
+  function refreshLinked() {
+    p.querySelectorAll('[data-linked-insert]').forEach(n => { n.textContent = fmtInsert(jobInsert(job)); });
+  }
+}
+
+function materialsEditor(job, mark) {
+  const wrap = el('div');
+  job.materials = job.materials || [];
+  job.materials.forEach((slot, i) => {
+    const row = el('div', 'slot');
+    const mat = slot.materialId ? S.ref.materials.find(m => m.id === slot.materialId) : null;
+    row.innerHTML = `<div class="hdr"><b>${esc(slot.slot || 'Exterior')}</b>` +
+      '<button class="iconbtn" title="Remove">✕</button></div>';
+    row.querySelector('.iconbtn').onclick = () => { job.materials.splice(i, 1); mark(); renderPanel(); };
+
+    const pick = el('div', 'pick');
+    const inp = el('input'); inp.type = 'text';
+    inp.placeholder = 'Search the catalog, or type a one-off';
+    inp.value = mat ? describeMaterial(mat) : (slot.localName || '');
+    pick.append(inp);
+    const res = el('div', 'pick-results'); res.hidden = true; pick.append(res);
+
+    inp.oninput = () => {
+      const q = inp.value.trim().toLowerCase();
+      slot.materialId = null; slot.localName = inp.value; mark();
+      if (q.length < 2) { res.hidden = true; return; }
+      const hits = S.ref.materials.filter(m => m.active !== false &&
+        Object.values(m).some(v => typeof v === 'string' && v.toLowerCase().includes(q))).slice(0, 40);
+      res.innerHTML = '';
+      if (!hits.length) {
+        res.innerHTML = '<div style="padding:var(--scale-300)" class="muted">' +
+          'No catalog match — this will be saved as a one-off on this job only.</div>';
+      } else {
+        hits.forEach(m => {
+          const b = el('button');
+          b.innerHTML = `<span class="k mono">${esc(materialKey(m))}</span> <span class="m">${esc(describeMaterial(m))}</span>`;
+          b.onclick = () => { slot.materialId = m.id; slot.localName = null; mark(); renderPanel(); };
+          res.append(b);
+        });
+      }
+      res.hidden = false;
+    };
+    inp.onblur = () => setTimeout(() => { res.hidden = true; }, 180);
+    row.append(pick);
+    if (!slot.materialId && slot.localName)
+      row.append(el('div', 'muted', '<span style="font-size:var(--fontsize-label)">One-off — job-local, never enters the catalog.</span>'));
+    wrap.append(row);
+  });
+
+  const add = el('div', 'actions');
+  ['Exterior', 'Interior'].forEach(kind => {
+    const b = el('button', 'btn-ghost', '+ ' + kind + ' material');
+    b.onclick = () => { job.materials.push({ slot: kind, materialId: null, localName: '' }); mark(); renderPanel(); };
+    add.append(b);
+  });
+  wrap.append(add);
+  return wrap;
+}
+
+const materialKey = m => [m.vendor, m.swatchNumber, m.itemId].filter(Boolean).join(' ') || m.id;
+const describeMaterial = m => [m.vendor, m.productLine, m.family, m.color, m.name, m.weight]
+  .filter(Boolean).join(' · ') || m.id;
+
+/* Binding and decoration rows share a shape — pick a type, fill its fields.
+   Options come from the definition, and combinations-mode types filter down
+   exactly the way the Reference Data preview does. */
+function defEditor(job, key, defs, mark, showInsert) {
+  const wrap = el('div');
+  job[key] = job[key] || [];
+  if (!defs.length) wrap.append(el('div', 'note warn', 'Nothing defined yet — add some in the Reference Data tool.'));
+
+  job[key].forEach((row, i) => {
+    const def = defs.find(d => d.id === row.typeId) || S.ref[key === 'binding' ? 'hardware' : 'decorations'].find(d => d.id === row.typeId);
+    const box = el('div', 'slot');
+    box.innerHTML = `<div class="hdr"><b>${esc(def?.label || row.typeId)}</b>` +
+      '<button class="iconbtn" title="Remove">✕</button></div>';
+    box.querySelector('.iconbtn').onclick = () => { job[key].splice(i, 1); mark(); renderPanel(); };
+    if (!def) { box.append(el('div', 'note err', 'This type no longer exists in reference data.')); wrap.append(box); return; }
+
+    row.values = row.values || {};
+    const fields = def.fields || [];
+    const combos = def.mode === 'combos' ? (def.combos || []) : null;
+    const line = el('div', 'row');
+
+    fields.forEach((f, fi) => {
+      const w = el('div');
+      w.append(el('label', 'fld', esc(f.label || f.id)));
+      let opts;
+      if (combos) {
+        // only values still reachable given what is already chosen to the left
+        let live = combos;
+        fields.slice(0, fi).forEach(prev => {
+          if (row.values[prev.id]) live = live.filter(c => c[prev.id] === row.values[prev.id]);
+        });
+        opts = [...new Set(live.map(c => c[f.id]).filter(Boolean))].sort();
+      } else {
+        opts = f.options || [];
+      }
+      if (opts.length) {
+        const sel = el('select');
+        sel.innerHTML = '<option value="">— none —</option>' +
+          opts.map(o => `<option${row.values[f.id] === o ? ' selected' : ''}>${esc(o)}</option>`).join('');
+        sel.onchange = e => {
+          row.values[f.id] = e.target.value;
+          // a changed parent invalidates everything downstream
+          if (combos) fields.slice(fi + 1).forEach(n => delete row.values[n.id]);
+          mark(); renderPanel();
+        };
+        w.append(sel);
+      } else {
+        const i2 = el('input'); i2.type = 'text'; i2.value = row.values[f.id] || '';
+        i2.oninput = e => { row.values[f.id] = e.target.value; mark(); };
+        w.append(i2);
+      }
+      line.append(w);
+    });
+
+    const qw = el('div', 'shrink');
+    qw.append(el('label', 'fld', esc(def.qtyLabel || 'Qty')));
+    const qi = el('input'); qi.type = 'text'; qi.inputMode = 'numeric'; qi.style.width = '80px';
+    qi.value = row.qty ?? '';
+    qi.oninput = e => { row.qty = e.target.value.replace(/\D/g, ''); e.target.value = row.qty; mark(); };
+    qw.append(qi);
+    line.append(qw);
+
+    box.append(line);
+    if ((def.departments || []).length)
+      box.append(el('div', 'muted', '<span style="font-size:var(--fontsize-label)">Pulls in: ' +
+        def.departments.map(d => esc(S.ref.departments.find(x => x.id === d)?.label || d)).join(', ') + '</span>'));
+
+    /* Insert size per binding type. Linked to the job by default — the usual
+       case is one insert size for the whole piece — but BC-00 keeps a separate
+       size per binding type, so unlinking has to be possible. */
+    if (showInsert) {
+      const linked = row.linkInsert !== false;
+      const ib = el('div');
+      ib.style.marginTop = 'var(--scale-300)';
+      if (linked) {
+        ib.innerHTML = '<label class="fld">Insert size</label>' +
+          '<div style="display:flex; align-items:center; gap:var(--scale-300)">' +
+          '<span class="pill-s pill-info">linked to job</span>' +
+          `<span class="mono" data-linked-insert>${esc(fmtInsert(jobInsert(job)))}</span>` +
+          '<button class="btn-ghost" data-unlink>use a different size</button></div>';
+        ib.querySelector('[data-unlink]').onclick = () => {
+          row.linkInsert = false;
+          row.insertSize = { ...jobInsert(job) };
+          mark(); renderPanel();
+        };
+      } else {
+        row.insertSize = row.insertSize || { width: '', height: '' };
+        ib.innerHTML = '<label class="fld">Insert size — unlinked</label>';
+        const line = el('div', 'row');
+        ['width', 'height'].forEach(k => {
+          const w = el('div');
+          w.append(el('label', 'fld', k === 'width' ? 'Width' : 'Height'));
+          const i2 = el('input'); i2.type = 'text'; i2.inputMode = 'numeric'; i2.value = row.insertSize[k] ?? '';
+          i2.oninput = e => { row.insertSize[k] = e.target.value.replace(/[^\d./]/g, ''); e.target.value = row.insertSize[k]; mark(); };
+          w.append(i2); line.append(w);
+        });
+        const relink = el('div', 'shrink');
+        relink.append(el('label', 'fld', '&nbsp;'));
+        const rb = el('button', 'btn-ghost', 'relink to job');
+        rb.onclick = () => { row.linkInsert = true; mark(); renderPanel(); };
+        relink.append(rb);
+        line.append(relink);
+        ib.append(line);
+      }
+      box.append(ib);
+    }
+    wrap.append(box);
+  });
+
+  const add = el('div', 'actions');
+  const sel = el('select'); sel.style.width = 'auto';
+  sel.innerHTML = '<option value="">— add —</option>' + defs.map(d => `<option value="${esc(d.id)}">${esc(d.label)}</option>`).join('');
+  sel.onchange = e => {
+    if (!e.target.value) return;
+    job[key].push({ typeId: e.target.value, values: {}, qty: '' });
+    mark(); renderPanel();
+  };
+  add.append(sel);
+  wrap.append(add);
+  return wrap;
+}
+
+/* ---------------------------------------------------------------- bindery */
+function renderBindery(p, job) {
+  const mark = () => { S.dirty = true; $('save').disabled = false; };
+
+  if (!job.binderyStartedAt)
+    p.append(el('div', 'note warn', '<b>The clock has not started.</b> Saving from this side stamps the job as ' +
+      'received by Bindery, and the due date counts working days from that stamp — not from when Creative configured it.'));
+
+  p.append(el('div', 'band', 'Configuration — read only'));
+  const dl = el('dl', 'sum');
+  const put = (k, v) => { dl.append(el('dt', '', esc(k)), el('dd', '', v || '<span class="muted">—</span>')); };
+  put('Job number', esc(job.jobNumber));
+  put('Product', esc(job.description));
+  put('Customer', esc(job.customer) + (job.mgmtGroup ? ` <span class="muted">${esc(job.mgmtGroup)}</span>` : ''));
+  put('Designer', esc(job.ownerName));
+  put('Quantity', esc(job.quantity));
+  put('Cover size', [job.coverW, job.coverH].filter(Boolean).join(' × '));
+  const ji = jobInsert(job);
+  put('Insert size', esc(fmtInsert(ji)) +
+    (ji.inserts ? ` <span class="muted">· ${esc(ji.inserts)} insert(s)</span>` : '') +
+    (ji.carriers ? ` <span class="muted">· ${esc(ji.carriers)} carrier(s)</span>` : ''));
+  put('Panels', job.panelCount
+    ? `${esc(job.panelCount)} <span class="muted">· shared cap ${panelCap(job)}</span>` : '');
+  put('Materials', (job.materials || []).map(m => {
+    const mat = m.materialId && S.ref.materials.find(x => x.id === m.materialId);
+    return `<b>${esc(m.slot)}:</b> ` + (mat ? esc(describeMaterial(mat))
+      : `${esc(m.localName || '—')} <span class="pill-s pill-warn2">one-off</span>`) +
+      (m.panels ? ` <span class="muted">· ${esc(m.panels)} panel(s)</span>` : '');
+  }).join('<br>'));
+  put('Binding', (job.binding || []).map(b => {
+    const d = S.ref.hardware.find(x => x.id === b.typeId);
+    const ins = rowInsert(job, b);
+    return esc(d?.label || b.typeId) + ' — ' + esc(Object.values(b.values || {}).filter(Boolean).join(' · ') || 'unspecified') +
+      (b.qty ? ` <span class="muted">×${esc(b.qty)}</span>` : '') +
+      ` <span class="muted">· insert ${esc(fmtInsert(ins))}${b.linkInsert === false ? ' (unlinked)' : ''}</span>`;
+  }).join('<br>'));
+  put('Decoration', (job.decorations || []).map(d => {
+    const def = S.ref.decorations.find(x => x.id === d.typeId);
+    return esc(def?.label || d.typeId) + ' — ' + esc(Object.values(d.values || {}).filter(Boolean).join(' · ') || 'unspecified');
+  }).join('<br>'));
+  put('Notes', esc(job.notes));
+  p.append(dl);
+
+  /* Offsets — decision 11. Global default, per-job override, Bindery-owned.
+     Only binding types actually on the job get a row, same as BC-00's
+     definedOffsetGroups(). */
+  p.append(el('div', 'band', 'Offsets — global default, per-job override'));
+  job.offsetOverrides = job.offsetOverrides || {};
+  const present = (job.binding || []).map(b => b.typeId);
+  if (!present.length) {
+    p.append(el('div', 'muted', '<span style="font-size:var(--fontsize-body-sm)">No binding on this job, so no offsets apply.</span>'));
+  } else {
+    [...new Set(present)].forEach(id => {
+      const def = S.ref.hardware.find(h => h.id === id);
+      const g = globalOffset(id), o = job.offsetOverrides[id] = job.offsetOverrides[id] || {};
+      const ins = rowInsert(job, (job.binding || []).find(b => b.typeId === id));
+      const box = el('div', 'slot');
+      box.innerHTML = `<div class="hdr"><b>${esc(def?.label || id)}</b>` +
+        `<span class="muted" style="font-size:var(--fontsize-label)">default ${g.vertical}v / ${g.horizontal}h</span></div>`;
+      const line = el('div', 'row');
+      ['vertical', 'horizontal'].forEach(dim => {
+        const w = el('div');
+        w.append(el('label', 'fld', dim));
+        const i = el('input'); i.type = 'text'; i.inputMode = 'numeric';
+        i.value = o[dim] ?? '';
+        i.placeholder = String(g[dim]);
+        i.oninput = e => { o[dim] = e.target.value.replace(/[^\d.]/g, ''); e.target.value = o[dim]; mark(); refreshCut(); };
+        w.append(i);
+        line.append(w);
+      });
+      const cut = el('div');
+      cut.append(el('label', 'fld', 'Cut size'));
+      const cutVal = el('div', 'mono');
+      cutVal.style.padding = 'var(--scale-200) 0';
+      cut.append(cutVal);
+      line.append(cut);
+      box.append(line);
+      box.append(el('div', 'muted', '<span style="font-size:var(--fontsize-label)">Blank uses the global default. ' +
+        'The offset is added on both sides, so the cut size grows by twice it.</span>'));
+      p.append(box);
+
+      const paint = () => {
+        const e2 = effOffset(job, id);
+        const w = parseFloat(ins.width), h = parseFloat(ins.height);
+        cutVal.innerHTML = (isFinite(w) && isFinite(h))
+          ? `${(w + 2 * e2.horizontal).toFixed(3).replace(/\.?0+$/, '')} × ${(h + 2 * e2.vertical).toFixed(3).replace(/\.?0+$/, '')}`
+          : '<span class="muted">needs an insert size</span>';
+      };
+      paint();
+      box._paint = paint;
+    });
+  }
+  function refreshCut() { p.querySelectorAll('.slot').forEach(n => n._paint && n._paint()); }
+
+  p.append(el('div', 'band', 'Yield inputs — Bindery owns these'));
+  job.yield = job.yield || {};
+  const r = el('div', 'row');
+  [['materialWrap', 'Material wrap'], ['centerGap', 'Center gap'], ['overs', 'Overs']].forEach(([k, label]) => {
+    const w = el('div');
+    w.append(el('label', 'fld', label));
+    const i = el('input'); i.type = 'text'; i.value = job.yield[k] ?? '';
+    i.oninput = e => { job.yield[k] = e.target.value; mark(); };
+    w.append(i);
+    r.append(w);
+  });
+  p.append(r);
+  p.append(el('div', 'note', 'Yield table, roll cross-section and the pull sheet are not built yet — that is the bindery ' +
+    'calculator half of the merge, and it rides on the formulas Dave still has to validate.'));
+
+  p.append(el('div', 'band', 'Production status'));
+  const chips = el('div', 'chips');
+  [['incoming', 'Incoming'], ['production', 'In Production']].forEach(([v, l]) => {
+    const b = el('button', 'chip' + ((job.prodStatus || 'incoming') === v ? ' on' : ''), l);
+    b.onclick = () => { job.prodStatus = v; mark(); render(); };
+    chips.append(b);
+  });
+  p.append(chips);
+
+  const bar = el('div', 'actions');
+  bar.innerHTML = `<span class="muted">${job.binderyStartedAt
+    ? 'Bindery received ' + esc(fmtDate(new Date(job.binderyStartedAt))) : 'Not yet received by Bindery'}</span>` +
+    '<span class="spacer"></span><button class="btn-primary" id="save" disabled>Save yield inputs</button>';
+  p.append(bar);
+  $('save').onclick = () => saveJob(job);
+}
+
+/* ---------------------------------------------------------------- writes */
+async function saveJob(job) {
+  if (isOffline()) { alert('Offline — nothing is written. Switch to live to save.'); return; }
+  if (!USER) { askWho(); if (!USER) return; }
+  const btn = $('save'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const { doc, setDoc, serverTimestamp } = S.fb;
+    const { id, ...rest } = job;
+    rest.meta = { lastEditedBy: { name: USER.name, department: USER.department }, lastEditedAt: serverTimestamp() };
+    if (!rest.ownerName) rest.ownerName = USER.name;
+    // The lead-time clock starts the first time Bindery touches the job. Stored
+    // as an ISO string rather than a server timestamp so the date arithmetic can
+    // run on read without waiting for a round trip.
+    if (S.mode === 'bindery' && !rest.binderyStartedAt) rest.binderyStartedAt = new Date().toISOString();
+    await setDoc(doc(S.db, 'jobs', id), rest, { merge: true });
+    // Mirror back what the save generated, or the panel keeps rendering the
+    // pre-save state — the due date would stay blank until a reload.
+    job.meta = rest.meta;
+    job.ownerName = rest.ownerName;
+    if (rest.binderyStartedAt) job.binderyStartedAt = rest.binderyStartedAt;
+    S.dirty = false;
+    btn.textContent = 'Saved';
+    setTimeout(() => { btn.textContent = S.mode === 'creative' ? 'Save job' : 'Save yield inputs'; }, 1200);
+    render();
+  } catch (err) {
+    alert('Could not save: ' + err.message);
+    btn.disabled = false; btn.textContent = 'Retry save';
+  }
+}
+
+$('newJob').onclick = () => {
+  if (!USER) { askWho(); if (!USER) return; }
+  const num = (prompt('Job number:') || '').replace(/\D/g, '');
+  if (!num) return;
+  const job = { id: 'job-' + num + '-' + Math.abs(num.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7)).toString(36),
+                jobNumber: num, stage: 'proof', quantity: '', materials: [], binding: [], decorations: [],
+                ownerName: USER.name };
+  S.jobs.push(job);
+  S.sel = job.id; S.dirty = true;
+  render();
+};
+
+function renderStatus() {
+  const off = isOffline();
+  $('dataStatus').innerHTML =
+    `<span class="pill-s ${off ? 'pill-warn2' : 'pill-new'}">${off ? 'offline' : 'live'}</span> ` +
+    (S.cacheAt ? `<span class="muted">data ${esc(ago(S.cacheAt))}</span> ` : '') +
+    '<button class="btn-ghost" id="refreshData">Refresh</button>' +
+    `<button class="btn-ghost" id="toggleOffline">${off ? 'go live' : 'work offline'}</button>`;
+  $('refreshData').onclick = async () => {
+    if (isOffline()) { alert('Offline. Switch to live first.'); return; }
+    $('refreshData').textContent = 'Refreshing…';
+    try { await loadAll(true); render(); } catch (e) { alert('Refresh failed: ' + e.message); }
+  };
+  $('toggleOffline').onclick = () => {
+    localStorage.setItem(OFFLINE_KEY, off ? '0' : '1');
+    location.reload();
+  };
+}
+
+/* ---------------------------------------------------------------- boot */
+renderWho();
+(async function init() {
+  try {
+    // Offline never opens a connection — that is the whole point of it.
+    if (!isOffline()) {
+      const saved = localStorage.getItem(CFG_KEY);
+      const cfg = saved ? JSON.parse(saved) : DEFAULT_CFG;
+      await connect(cfg);
+    }
+    await loadAll();
+    renderStatus();
+    if (USER) setMode(USER.department); else render();
+  } catch (err) {
+    $('refWarn').innerHTML = '<div class="note err"><b>Could not reach Firestore.</b> ' + esc(err.message) +
+      '<br><span class="muted">Reference Data holds the connection settings — check there first.</span></div>';
+    render();
+  }
+})();
+</script>
+</body>
+</html>

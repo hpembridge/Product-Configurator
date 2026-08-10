@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <!--
-  Platinum — Material Catalog Importer
-  00-PL-PC · CSV → Firestore sync for the fabrics catalog
+  Platinum — Reference Data
+  00-PL-PC · shared reference data for the Menu Construction Sheet and
+  Bindery Leadtime Calculator: materials, hardware, decorations,
+  departments and tier escalation.
 
-  Design tokens are INLINED below so this file runs standalone (double-click, no server).
-  When this lands in a repo with the platinum-shared submodule, delete the <style id="tokens">
-  block and replace with:  <link rel="stylesheet" href="shared/css/design-tokens.css">
+  The fabrics spreadsheet remains source of truth for materials — CSV is
+  read-only input here (decision 10). Everything else is authored in this
+  tool and Firestore is its master copy.
+
+  Design tokens come from the PL-SHARED submodule (shared/css/design-tokens.css).
+  Still opens fine via double-click (file://) — a <link rel="stylesheet"> to a
+  same-folder file isn't blocked the way fetch()/XHR is. Only breaks if the
+  "shared" submodule folder is missing (run `git submodule update --init`).
 
   No build step. Firebase v12 ESM loaded from gstatic, only when a config is present.
 -->
@@ -13,605 +20,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Material Catalog Importer — Platinum</title>
+<title>Reference Data — Platinum</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
-<style id="tokens">
-/**
- * Design Tokens
- * Generated from Figma Design System
- * Source: https://www.figma.com/design/L32frKuTuuQFhvUlWGBalf/Design-System
- *
- * Collections:
- *   - _Primitives  → Raw palette + type/scale values (always available)
- *   - responsive   → Font sizes, line-heights, spacing (always available)
- *   - Mapped       → Semantic tokens, three themes:
- *                    [data-theme="titanium"] (default)
- *                    [data-theme="ivory"]
- *                    [data-theme="dark"] / prefers-color-scheme: dark
- */
+<link rel="stylesheet" href="shared/css/design-tokens.css">
 
-/*
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
- 
- */
-
-/* ============================================================
-   PRIMITIVES — Color Palette
-   ============================================================ */
-
-:root {
-  /* Patina */
-  --color-patina-00: #f9feff;
-  --color-patina-25: #F2FDFF;
-  --color-patina-150: #a1d4e0;
-  --color-patina-200: #8dc7d6;
-  --color-patina-300: #6cadc0;
-  --color-patina-400: #5294a9;
-  --color-patina-500: #3d7d93;
-  --color-patina-600: #2d677c;
-  --color-patina-700: #244f5f;
-  --color-patina-800: #1a3742;
-  --color-patina-900: #101f25;
-  /* Gold */
-  --color-gold-00: #fff7e6;
-  --color-gold-200: #ffdb8e;
-  --color-gold-300: #f3c768;
-  --color-gold-400: #e0b147;
-  --color-gold-500: #c8982c;
-  --color-gold-600: #a37f20;
-  --color-gold-700: #7a6217;
-  --color-gold-800: #4f420f;
-  --color-gold-900: #252008;
-  /* Titanium */
-  --color-titanium-00: #fcfcfc;
-  --color-titanium-50: #f9f9f9;
-  --color-titanium-100: #f4f4f4;
-  --color-titanium-150: #eeeeee;
-  --color-titanium-200: #e9e9e9;
-  --color-titanium-300: #dddddd;
-  --color-titanium-400: #d2d2d2;
-  --color-titanium-500: #d3d3d3;
-  --color-titanium-600: #c6c6c6;
-  --color-titanium-700: #aeaeae;
-  --color-titanium-800: #959595;
-  --color-titanium-900: #7e7e7e;
-  /* Copper */
-  --color-copper-00: #fffbf2;
-  --color-copper-150: #f0b160;
-  --color-copper-200: #ec9d46;
-  --color-copper-300: #d77d2b;
-  --color-copper-400: #d4742c;
-  --color-copper-500: #c76028;
-  --color-copper-600: #9f482e;
-  --color-copper-700: #773027;
-  --color-copper-800: #501213;
-  --color-copper-900: #280006;
-  /* Ivory */
-  --color-ivory-00: #f9f6f1;
-  --color-ivory-25: #F7F4ED;
-  --color-ivory-50: #F6F2E9;
-  --color-ivory-100: #f3eee2;
-  --color-ivory-200: #eae6de;
-  --color-ivory-300: #dedad1;
-  --color-ivory-400: #d1ccc4;
-  --color-ivory-500: #c2bfb6;
-  --color-ivory-700: #939188;
-  --color-ivory-800: #838078;
-  --color-ivory-900: #6A6861;
-  /* Carbon */
-  --color-carbon-100: #575757;
-  --color-carbon-200: #4c4c4c;
-  --color-carbon-300: #424242;
-  --color-carbon-400: #383838;
-  --color-carbon-500: #2d2d2d;
-  --color-carbon-600: #232323;
-  --color-carbon-700: #1c1c1c;
-  --color-carbon-800: #151515;
-  /* Green */
-  --color-green-50: #daf5e8;
-  --color-green-200: #85d8b8;
-  --color-green-600: #007f6a;
-  --color-green-800: #06433d;
-  /* Red */
-  --color-red-00: #fff4f5;
-  --color-red-100: #fc9090;
-  --color-red-300: #f44336;
-  --color-red-900: #630606;
-  /* Base */
-  --color-white: #ffffff;
-  --color-black: #000000;
-  /* ============================================================
-    DATA COLORS
-    ============================================================ */
-  /*cherry*/
-  --datacolor-cherry-00: #fff1f5;
-  --datacolor-cherry-01: #ffc8d7;
-  --datacolor-cherry-02: #ff9bba;
-  --datacolor-cherry-03: #e280a0;
-  --datacolor-cherry-04: #bf6b86;
-  --datacolor-cherry-05: #9d576e;
-  --datacolor-cherry-06: #7c4456;
-  --datacolor-cherry-07: #5d3240;
-  /*orange*/
-  --datacolor-orange-00: #fff3e9;
-  --datacolor-orange-01: #ffcea7;
-  --datacolor-orange-02: #ffa659;
-  --datacolor-orange-03: #dc8f4b;
-  --datacolor-orange-04: #b9783e;
-  --datacolor-orange-05: #986232;
-  --datacolor-orange-06: #784c26;
-  --datacolor-orange-07: #5a381a;
-  /*lemon*/
-  --datacolor-lemon-00: #f2ffa2;
-  --datacolor-lemon-01: #d6e562;
-  --datacolor-lemon-02: #bbc855;
-  --datacolor-lemon-03: #a1ac48;
-  --datacolor-lemon-04: #87913c;
-  --datacolor-lemon-05: #6e7630;
-  --datacolor-lemon-06: #575d24;
-  --datacolor-lemon-07: #404519;
-  /*mint*/
-  --datacolor-mint-00: #dfffe4;
-  --datacolor-mint-01: #87f6a1;
-  --datacolor-mint-02: #75d78d;
-  --datacolor-mint-03: #64b978;
-  --datacolor-mint-04: #549c65;
-  --datacolor-mint-05: #448052;
-  --datacolor-mint-06: #346440;
-  --datacolor-mint-07: #254b2e;
-  /*blueberry*/
-  --datacolor-blueberry-00: #eef6ff;
-  --datacolor-blueberry-01: #bdddff;
-  --datacolor-blueberry-02: #89c3ff;
-  --datacolor-blueberry-03: #62a8ee;
-  --datacolor-blueberry-04: #528dc9;
-  --datacolor-blueberry-05: #4274a5;
-  --datacolor-blueberry-06: #335b83;
-  --datacolor-blueberry-07: #244362;
-  /*grape*/
-  --datacolor-grape-00: #f5f4ff;
-  --datacolor-grape-01: #d8d3ff;
-  --datacolor-grape-02: #bcb2ff;
-  --datacolor-grape-03: #a295ec;
-  --datacolor-grape-04: #887dc7;
-  --datacolor-grape-05: #6f66a4;
-  --datacolor-grape-06: #585082;
-  --datacolor-grape-07: #413b61;
-  /* ============================================================
-     PRIMITIVES — Spacing Scale
-     ============================================================ */
-
-  --scale-0: 0px;
-  --scale-25: 1px;
-  --scale-50: 2px;
-  --scale-100: 4px;
-  --scale-200: 8px;
-  --scale-300: 12px;
-  --scale-400: 16px;
-  --scale-500: 20px;
-  --scale-600: 24px;
-  --scale-700: 28px;
-  --scale-800: 32px;
-  --scale-900: 36px;
-  --scale-1000: 40px;
-  --scale-1100: 44px;
-  --scale-1200: 48px;
-  --scale-1600: 64px;
-  /* ============================================================
-     PRIMITIVES — Typography
-     ============================================================ */
-
-  --font-family-primary: "Google Sans Flex", sans-serif;
-  --font-family-mono: "Fira Code", "JetBrains Mono", ui-monospace, monospace;
-  --font-weight-light: 300;
-  --font-weight-book: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  /* ============================================================
-     RESPONSIVE — Font Size
-     ============================================================ */
-
-  --fontsize-label: 10px;
-  --fontsize-body-sm: 12px;
-  --fontsize-body-md: 14px;
-  --fontsize-body-lg: 16px;
-  --fontsize-heading-h6: 20px;
-  --fontsize-heading-h5: 24px;
-  --fontsize-heading-h4: 32px;
-  --fontsize-heading-h3: 40px;
-  --fontsize-heading-h2: 48px;
-  --fontsize-heading-h1: 60px;
-  /* ============================================================
-     RESPONSIVE — Line Height
-     ============================================================ */
-
-  --line-height-label: 14px;
-  --line-height-body-sm: 20px;
-  --line-height-body-md: 20px;
-  --line-height-body-lg: 24px;
-  --line-height-heading-h6: 24px;
-  --line-height-heading-h5: 28px;
-  --line-height-heading-h4: 40px;
-  --line-height-heading-h3: 48px;
-  --line-height-heading-h2: 56px;
-  --line-height-heading-h1: 72px;
-  /* ============================================================
-     RESPONSIVE — Paragraph Spacing
-     ============================================================ */
-
-  --paragraph-spacing-body-sm: 16px;
-  --paragraph-spacing-body-md: 16px;
-  --paragraph-spacing-body-lg: 20px;
-  --paragraph-spacing-heading-h6: 24px;
-  --paragraph-spacing-heading-h5: 28px;
-  --paragraph-spacing-heading-h4: 32px;
-  --paragraph-spacing-heading-h3: 36px;
-  --paragraph-spacing-heading-h2: 40px;
-  --paragraph-spacing-heading-h1: 44px;
-  /* ============================================================
-     BORDER RADIUS
-     ============================================================ */
-
-  --border-radius-sm: 4px;
-  --border-radius-md: 8px;
-  --border-radius-lg: 12px;
-  --border-radius-xl: 16px;
-  --border-radius-full: 9999px;
-}
-
-:root {
-  /* ============================================================
-    CONTENT WIDTH PRIMITIVES
-    ============================================================ */
-  /* sidebar */
-  --container-sidebar-sm: 280px;
-  --container-sidebar-md: 360px;
-  --container-sidebar-lg: 420px;
-  /* aside */
-  --container-aside-lg: 768px;
-  --container-aside-sm: 640px;
-}
-
-/* semantic tokens  */
-:root {
-  --container-sidebar: var(--container-sidebar-md);
-  --container-aside: var(--container-aside-sm);
-  --container-workspace: 1024px;
-  --container-data: 1408px;
-}
-
-@media (min-width: 2000px) {
-  :root {
-    --container-sidebar: var(--container-sidebar-lg);
-    --container-workspace: 1280px;
-    --container-data: 1600px;
-  }
-}
-
-@media (max-width: 1024px) {
-  :root {
-    --container-sidebar: var(--container-sidebar-sm);
-    --container-aside: var(--container-aside-sm);
-    --container-workspace: 768px;
-    --container-data: 100%;
-  }
-}
-
-
-
-
-/* ============================================================
-   BASE RESET
-   ============================================================ */
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p {
-  font-family: var(--font-family-primary);
-  font-style: normal;
-  font-variation-settings: "slnt" 0, "wdth" 10, "GRAD" 8, "ROND" 0;
-  margin: 0;
-}
-
-body {
-  font-family: var(--font-family-primary);
-  font-style: normal;
-}
-
-a {
-  color: var(--text-interactive);
-  text-decoration: underline;
-}
-
-a:hover {
-  color: var(--interactive-hover);
-  cursor: pointer;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0px 8px;
-  border-radius: var(--border-radius-full);
-  gap: 3px;
-  font-size: var(--fontsize-body-sm);
-  background: var(--status-neutral-bg);
-  color: var(--text-primary);
-  border: 0.5px solid var(--status-neutral-border)
-}
-
-.pill-success {
-  background: var(--status-success-bg);
-  border: 1px solid var(--status-success-border);
-  color: var(--text-primary);
-}
-
-.pill-warn {
-  background: var(--status-warning-bg);
-  border: solid 1px var(--status-warning-border)
-}
-
-
-/* ============================================================
-   HEADINGS
-   ============================================================ */
-
-.type-heading-h1,
-h1 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h1);
-  line-height: var(--line-height-heading-h1);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-heading-h2,
-h2 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h2);
-  line-height: var(--line-height-heading-h2);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-heading-h3,
-h3 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h3);
-  line-height: var(--line-height-heading-h3);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-heading-h4,
-h4 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h4);
-  line-height: var(--line-height-heading-h4);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-heading-h5,
-h5 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h5);
-  line-height: var(--line-height-heading-h5);
-  letter-spacing: 0;
-}
-
-.type-heading-h6,
-h6 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h6);
-  line-height: var(--line-height-heading-h6);
-  letter-spacing: 0;
-}
-
-.type-heading-h6,
-h6 {
-  font-weight: var(--font-weight-bold);
-  font-size: var(--fontsize-heading-h6);
-  line-height: var(--line-height-heading-h6);
-  letter-spacing: 0;
-}
-
-
-/* ============================================================
-   BODY
-   ============================================================ */
-
-.type-body-lg {
-  font-weight: var(--font-weight-light);
-  font-size: var(--fontsize-body-lg);
-  line-height: var(--line-height-body-lg);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-body-md {
-  font-weight: var(--font-weight-light);
-  font-size: var(--fontsize-body-md);
-  line-height: var(--line-height-body-md);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-body-sm {
-  font-weight: var(--font-weight-light);
-  font-size: var(--fontsize-body-sm);
-  line-height: var(--line-height-body-sm);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.type-body-label {
-  font-weight: var(--font-weight-light);
-  font-size: var(--fontsize-label);
-  line-height: var(--line-height-label);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.semibold {
-  font-weight: var(--font-weight-semibold);
-}
-
-.uppercase {
-  text-transform: uppercase;
-}
-
-
-/* ============================================================
-   SEMANTIC TOKENS — Titanium Theme (default)
-   ============================================================ */
-
-:root,
-[data-theme="titanium"] {
-  /* Backgrounds */
-  --bg-page: var(--color-titanium-100);
-  --bg-surface: var(--color-white);
-  --bg-subtle: var(--color-titanium-200);
-  --bg-muted: var(--color-titanium-50);
-  --bg-inverse: var(--color-carbon-600);
-  /* Text */
-  --text-primary: var(--color-carbon-500);
-  --text-secondary: var(--color-carbon-100);
-  --text-tertiary: var(--color-titanium-900);
-  --text-interactive: var(--color-patina-600);
-  --text-on-dark: var(--color-titanium-00);
-  /* Borders */
-  --border-default: var(--color-titanium-700);
-  --border-subtle: var(--color-titanium-400);
-  --border-tertiary: var(--color-titanium-300);
-  --border-focus: var(--color-patina-400);
-  /* Interactive */
-  --interactive-default: var(--color-patina-500);
-  --interactive-hover: var(--color-patina-400);
-  --interactive-pressed: var(--color-patina-600);
-  --interactive-bg-subtle: var(--color-patina-25);
-  /* Accent */
-  --accent-default: var(--color-gold-500);
-  --accent-strong: var(--color-gold-700);
-  --accent-bg: var(--color-gold-00);
-  /* Status — Success */
-  --status-success-bg: var(--color-green-50);
-  --status-success-border: var(--color-green-600);
-  /* Status — Warning */
-  --status-warning-bg: var(--color-copper-00);
-  --status-warning-border: var(--color-copper-300);
-  /* Status — Error */
-  --status-error-bg: var(--color-red-00);
-  --status-error-border: var(--color-red-300);
-  /* Status — Neutral */
-  --status-neutral-bg: var(--color-titanium-100);
-  --status-neutral-border: var(--color-titanium-800);
-  /* Status — Info */
-  --status-info-bg: var(--color-patina-00);
-  --status-info-border: var(--color-patina-400);
-  /* Overlays */
-  --overlay-modal: rgb(from var(--color-black) r g b / 0.6);
-  --overlay-panel: rgb(from var(--color-black) r g b / 0.2);
-}
-
-
-/* ============================================================
-   BUTTONS
-   ============================================================ */
-
-.btn-primary {
-  background: var(--interactive-default);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--border-radius-full);
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: background 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-primary:hover {
-  background: var(--interactive-hover);
-}
-
-.btn-secondary {
-  background: var(--bg-surface);
-  color: var(--interactive-default);
-  border: 1px solid var(--interactive-default);
-  border-radius: var(--border-radius-full);
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: border-color 0.15s, color 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: fit-content;
-}
-
-.btn-secondary:hover {
-  background-color: var(--interactive-bg-subtle);
-}
-
-.btn-ghost {
-  font-weight: var(--font-weight-semibold);
-  border: solid 1px transparent;
-  background: none;
-  color: var(--text-tertiary);
-  padding: 8px 12px;
-  font-size: var(--fontsize-body-sm);
-  gap: 8px;
-  display: flex;
-  align-items: center;
-}
-
-.btn-ghost:hover {
-  cursor: pointer;
-  opacity: 0.8;
-}
-
-.submit-btn {
-  background: var(--interactive-default);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--border-radius-full);
-  padding: 10px 28px;
-  font-size: var(--fontsize-body-md);
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  transition: background 0.15s;
-
-}
-
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  /*    background-color: var(--titanium-500);*/
-  pointer-events: none;
-}
-
-
-.submit-btn:hover {
-  background: var(--interactive-hover);
-}
-</style>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -780,15 +194,215 @@ h6 {
 
   .empty { padding: var(--scale-800); text-align: center; color: var(--text-tertiary); font-size: var(--fontsize-body-sm); }
   code.k { background: var(--bg-subtle); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+  /* ---- mode switcher (Import vs Browse) ---- */
+  .modenav { display: inline-flex; gap: 2px; background: var(--bg-subtle); border-radius: var(--border-radius-full);
+    padding: 3px; margin-bottom: var(--scale-500); }
+  .modenav button {
+    font-family: inherit; border: none; background: none; cursor: pointer;
+    padding: var(--scale-200) var(--scale-500); border-radius: var(--border-radius-full);
+    font-size: var(--fontsize-body-sm); font-weight: 600; color: var(--text-tertiary);
+  }
+  .modenav button.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+
+  /* ---- browse catalog ---- */
+  .browse-toolbar { display: flex; gap: var(--scale-300); flex-wrap: wrap; align-items: center; margin-bottom: var(--scale-400); }
+  .browse-toolbar .search { flex: 1 1 260px; position: relative; }
+  .browse-toolbar .search input { padding-left: 32px; }
+  .browse-toolbar .search::before {
+    content: "🔍"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 13px; opacity: .5; pointer-events: none;
+  }
+  .browse-toolbar select { width: auto; min-width: 200px; }
+  .cat-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--scale-400); }
+  .cat-pill {
+    font-family: inherit; border: 1px solid var(--border-tertiary); background: var(--bg-surface);
+    border-radius: var(--border-radius-full); padding: 5px 12px; font-size: var(--fontsize-body-sm);
+    cursor: pointer; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .cat-pill .cnt { color: var(--text-tertiary); font-size: var(--fontsize-label); }
+  .cat-pill.active { border-color: var(--interactive-default); background: var(--interactive-bg-subtle); color: var(--text-primary); font-weight: 600; }
+  .cat-pill.active .cnt { color: var(--text-interactive); }
+  /* group heads (All / All Material / All Hardware) read as parents of the pills after them */
+  .cat-pill.group { font-weight: 700; background: var(--bg-subtle); }
+  .cat-pill.group.active { background: var(--interactive-bg-subtle); }
+  .pill-sep { width: 1px; align-self: stretch; background: var(--border-tertiary); margin: 2px 4px; }
+  .browse-count { color: var(--text-tertiary); font-size: var(--fontsize-body-sm); margin-bottom: var(--scale-200); }
+  .browse-count b { color: var(--text-primary); }
+
+  /* ---- hardware editor: master list + detail pane ---- */
+  .hw-split { display: grid; grid-template-columns: 260px 1fr; gap: var(--scale-500); align-items: start; }
+  @media (max-width: 860px) { .hw-split { grid-template-columns: 1fr; } }
+
+  .hw-list { border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md); overflow: hidden; }
+  .hw-item {
+    display: flex; align-items: center; gap: var(--scale-200); width: 100%;
+    padding: var(--scale-300) var(--scale-400); background: var(--bg-surface);
+    border: none; border-bottom: 1px solid var(--border-tertiary); cursor: pointer;
+    font-family: inherit; font-size: var(--fontsize-body-sm); color: var(--text-secondary); text-align: left;
+  }
+  .hw-item:last-child { border-bottom: none; }
+  .hw-item:hover { background: var(--bg-muted); }
+  .hw-item.sel { background: var(--interactive-bg-subtle); color: var(--text-primary); font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--interactive-default); }
+  .hw-item .nm { flex: 1; }
+  .hw-item .ct { font-size: var(--fontsize-label); color: var(--text-tertiary); }
+  .hw-item.off .nm { text-decoration: line-through; opacity: .55; }
+  .hw-item.dirty .nm::after { content: '•'; color: var(--status-warning-border); margin-left: 6px; font-weight: 900; }
+
+  .hw-detail { border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md); padding: var(--scale-500); background: var(--bg-surface); }
+  .hw-detail h3 { margin: 0 0 var(--scale-400); font-size: var(--fontsize-body-lg); font-weight: 600; }
+
+  .hw-field {
+    border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md);
+    padding: var(--scale-400); margin-bottom: var(--scale-300); background: var(--bg-muted);
+  }
+  .hw-field-head { display: flex; gap: var(--scale-300); align-items: flex-end; margin-bottom: var(--scale-300); }
+  .hw-field-head > :first-child { flex: 1; }
+  .hw-opts-count { font-size: var(--fontsize-label); color: var(--text-tertiary); text-transform: uppercase;
+    letter-spacing: .06em; font-weight: 700; margin-bottom: var(--scale-100); }
+  .hw-bar { display: flex; gap: var(--scale-300); align-items: center; flex-wrap: wrap;
+    padding-top: var(--scale-400); margin-top: var(--scale-400); border-top: 1px solid var(--border-tertiary); }
+  .hw-bar .spacer { flex: 1; }
+  .hw-save-state { font-size: var(--fontsize-body-sm); color: var(--text-tertiary); }
+  .hw-save-state.dirty { color: var(--status-warning-border); font-weight: 600; }
+  .hw-save-state.ok { color: var(--status-success-border); font-weight: 600; }
+  .iconbtn { background: none; border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-sm);
+    width: 26px; height: 26px; cursor: pointer; color: var(--text-tertiary); font-family: inherit; line-height: 1; }
+  .iconbtn:hover { border-color: var(--interactive-default); color: var(--text-primary); }
+  .iconbtn:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* ---- dependent-combination grid ---- */
+  .mode-toggle { display: inline-flex; gap: 2px; background: var(--bg-subtle); border-radius: var(--border-radius-full); padding: 3px; }
+  .mode-toggle button {
+    background: none; border: none; border-radius: var(--border-radius-full); cursor: pointer;
+    padding: var(--scale-200) var(--scale-400); font-family: inherit; font-size: var(--fontsize-body-sm);
+    font-weight: 600; color: var(--text-tertiary);
+  }
+  .mode-toggle button.on { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+
+  .combo-grid { width: 100%; border-collapse: collapse; font-size: var(--fontsize-body-sm); }
+  .combo-grid th {
+    text-align: left; font-size: var(--fontsize-label); text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-tertiary); font-weight: 700; padding: var(--scale-200) var(--scale-300);
+    border-bottom: 1px solid var(--border-tertiary); position: sticky; top: 0; background: var(--bg-surface); z-index: 1;
+  }
+  .combo-grid td { padding: 2px 3px; border-bottom: 1px solid var(--border-tertiary); }
+  .combo-grid td input { padding: var(--scale-100) var(--scale-200); border-color: transparent; background: none; }
+  .combo-grid td input:hover { border-color: var(--border-subtle); }
+  .combo-grid td input:focus { background: var(--bg-surface); }
+  .combo-grid tr.dupe td input { background: var(--status-error-bg); }
+  .combo-grid tr.blank td input { background: var(--status-warning-bg); }
+  .combo-grid td.rm { width: 30px; text-align: center; }
+
+  .combo-stats { display: flex; gap: var(--scale-500); flex-wrap: wrap; margin: var(--scale-300) 0; }
+  .combo-stats div { font-size: var(--fontsize-body-sm); color: var(--text-tertiary); }
+  .combo-stats b { color: var(--text-primary); font-size: var(--fontsize-body-md); }
+
+  .preview-box {
+    border: 1px solid var(--border-tertiary); border-left: 3px solid var(--interactive-default);
+    border-radius: var(--border-radius-md); padding: var(--scale-400);
+    background: var(--interactive-bg-subtle); margin-top: var(--scale-400);
+  }
+  .preview-box .ttl { font-size: var(--fontsize-label); text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-tertiary); font-weight: 700; margin-bottom: var(--scale-300); }
+  .preview-row { display: flex; gap: var(--scale-300); flex-wrap: wrap; align-items: flex-end; }
+  .preview-row > div { flex: 1 1 130px; }
+  .preview-out { margin-top: var(--scale-300); font-size: var(--fontsize-body-sm); color: var(--text-secondary); }
+  .preview-out b { color: var(--text-primary); }
+  tr.inactive-row { opacity: .5; }
+  tr.inactive-row:hover { opacity: .75; }
+  .hl { background: var(--accent-bg); border-radius: 2px; padding: 0 1px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header class="app">
-    <h1>Material Catalog Importer</h1>
-    <span class="sub">Platinum · 00-PL-PC — CSV is read-only input; the spreadsheet stays source of truth</span>
+    <h1>Reference Data</h1>
+    <span class="sub">for use with the Menu Construction Sheet and Bindery Leadtime Calculator</span>
   </header>
+
+  <div class="modenav" id="modenav">
+    <button class="active" data-m="browse">Browse</button>
+    <button data-m="import">Edit materials</button>
+    <button data-m="hardware">Edit hardware</button>
+    <button data-m="decorations">Edit decorations</button>
+    <button data-m="departments">Departments</button>
+    <button data-m="escalation">Escalation</button>
+  </div>
+
+  <!-- ============ HARDWARE MODE ============ -->
+  <section id="hwMode" hidden>
+    <div class="card">
+      <h2 id="defsTitle">Hardware definitions</h2>
+      <p class="hint"><span id="defsBlurb">The hardware types Creative can add to a job, and the suggested values for each.</span>
+        Options are suggestions, never a closed list — a one-off can always be typed in, same rule as materials.</p>
+
+      <div id="hwStatus"></div>
+      <div class="hw-split">
+        <div>
+          <div class="hw-list" id="hwList"></div>
+          <div class="actions" style="margin-top:var(--scale-300)">
+            <button class="btn-ghost" id="hwAdd">+ Add</button>
+            <button class="btn-ghost" id="hwRefresh">↻ Reload</button>
+          </div>
+        </div>
+        <div id="hwDetail"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BROWSE MODE ============ -->
+  <section id="browseMode">
+    <div class="card">
+      <h2>Browse the reference data</h2>
+      <p class="hint">Everything Creative can pick — materials and hardware together. Hardware is listed one row per combination, because a type with option lists isn’t one choice, it’s many. Inactive rows (dimmed) are hidden from the picker but kept for existing jobs. This tab is read-only; the two edit tabs change the data.</p>
+
+      <div class="browse-toolbar">
+        <div class="search">
+          <input type="text" id="browseSearch" placeholder="Search everything — vendor, swatch #, colour, hardware type, cord length…">
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:var(--fontsize-body-sm); color:var(--text-secondary); white-space:nowrap;">
+          <input type="checkbox" id="browseShowInactive"> show inactive
+        </label>
+        <button class="btn-ghost" id="browseRefresh">↻ Refresh</button>
+      </div>
+
+      <div class="cat-pills" id="catPills"></div>
+      <div class="browse-count" id="browseCount"></div>
+      <div class="tbl-scroll" id="browseTblWrap" style="max-height:560px; border-top:1px solid var(--border-tertiary); border-radius:var(--border-radius-md);">
+        <div class="empty">Connecting…</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ DEPARTMENTS ============ -->
+  <section id="deptMode" hidden>
+    <div class="card">
+      <h2>Production departments</h2>
+      <p class="hint">One bucket per shop. Put a decoration or a material category in a bucket and any job using it
+        pulls that department in. BLC makes people toggle departments by hand — this is what replaces that.
+        What a department does to the <b>tier</b> lives in Escalation, not here.</p>
+      <div id="deptStatus"></div>
+      <div id="deptBody"></div>
+    </div>
+  </section>
+
+  <!-- ============ ESCALATION ============ -->
+  <section id="escMode" hidden>
+    <div class="card">
+      <h2>Tier escalation</h2>
+      <p class="hint">One bucket per tier, holding everything that pushes a job into it, plus the lead time that tier
+        carries. Rules only ever raise the tier — a job lands on the highest one anything triggers.</p>
+      <div id="escStatus"></div>
+      <div id="escBody"></div>
+    </div>
+  </section>
+
+  <!-- ============ IMPORT MODE ============ -->
+  <div id="importMode" hidden>
 
   <div class="stepper" id="stepper">
     <div class="step active" data-s="1"><span class="n">1</span> Load CSV</div>
@@ -802,30 +416,17 @@ h6 {
     <h2>1 · Load the CSV</h2>
     <p class="hint">Category comes from the file you choose, not from a column — each category is exported separately.</p>
 
-    <div class="row" style="margin-bottom:var(--scale-400)">
+    <div class="row" style="margin-bottom:var(--scale-300)">
       <div>
         <label class="fld" for="cat">Category</label>
-        <select id="cat">
-          <option value="bookcloth">Bookcloth / roll goods (fabrics)</option>
-          <option value="linen-paper">Linen / Paper</option>
-          <option value="leather">Leather</option>
-          <option value="rockboard">Rockboard</option>
-          <option value="wood">Wood</option>
-          <option value="metal">Metal</option>
-          <option value="acrylic">Acrylic</option>
-          <option value="carbonite">Carbonite</option>
-          <option value="4c-litho">4C Litho</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="shrink" style="align-self:flex-end">
-        <span class="pill-s pill-info" id="yieldFlag">yield-eligible</span>
+        <select id="cat"></select>
       </div>
     </div>
+    <div id="schemaNote" style="margin-bottom:var(--scale-400)"></div>
 
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose or drop a CSV file">
       <div class="big">Drop the CSV here</div>
-      <div class="small">or click to choose · columns used: Swatch Number, Vendor, Product Line, Family, Color, Decoration</div>
+      <div class="small" id="dropCols">columns used: —</div>
     </div>
     <input type="file" id="file" accept=".csv,text/csv" hidden>
 
@@ -895,24 +496,143 @@ h6 {
     (<code class="k">rollWidth</code>, <code class="k">patternSensitive</code>, <code class="k">decorationEligible</code>, <code class="k">notes</code>)
     are never touched.
   </p>
+
+  </div><!-- /importMode -->
 </div>
 
 <script type="module">
 /* ============================================================
-   CONSTANTS
+   CATEGORY SCHEMAS
+   Every category gets its own columns. Two invariants hold for all of them:
+     - keyFields: the field id(s) that together must be unique per row. This is
+       what makes a material the "same" material across re-imports — it is
+       NEVER synthesized by the importer. If a category's CSV has no natural
+       unique column, that column has to be added at the source (as we did
+       for leather's "Swatch Number" / RV-prefix), not invented here.
+     - TOOL_FIELDS (below) are separate from all of this and apply to every
+       category identically — they're never part of a schema.
+   `provisional: true` describes the COLUMN LIST, not the data. It means nobody
+   has yet seen a real export for that category, so these columns are a guess
+   copied from MCS's material-config.js. It has nothing to do with whether
+   materials have been imported — importing rows against a guessed schema does
+   not confirm the guess was right, and a category with zero rows can still have
+   a schema we know is correct. Clear the flag when a real export has been read
+   and the columns matched. Proven so far: Bookcloth, Leather, Rockboard.
    ============================================================ */
-const COLS = {
-  swatchNumber: 'Swatch Number',
-  vendor:       'Vendor',
-  productLine:  'Product Line',
-  family:       'Family',
-  color:        'Color',
-  decoration:   'Decoration',
+const CATEGORY_SCHEMAS = {
+  bookcloth: {
+    label: 'Bookcloth', yieldEligible: true, provisional: false,
+    vendorField: 'vendor', keyFields: ['vendor', 'swatchNumber'],
+    // Displayed as a compact code (MA50) rather than "Majilite / 50", to match the
+    // shape of the other categories' keys (RB29, RV032). Display only — the stored
+    // document id still uses the full vendor + swatch number.
+    keyDisplay: m => vendorAbbr(m.vendor).toUpperCase() + String(m.swatchNumber ?? ''),
+    fields: [
+      { id: 'swatchNumber', header: 'Swatch Number', label: 'Swatch #' },
+      { id: 'vendor',       header: 'Vendor',        label: 'Vendor' },
+      { id: 'productLine',  header: 'Product Line',  label: 'Product Line' },
+      { id: 'family',       header: 'Family',        label: 'Family' },
+      { id: 'color',        header: 'Color',         label: 'Color' },
+      { id: 'decoration',   header: 'Decoration',    label: 'Decoration' },
+    ],
+  },
+  leather: {
+    label: 'Leather', yieldEligible: false, provisional: false,
+    note: 'No yield — vendor-processed, not stocked in house. This schema is proven against a real export (132 rows, RV001–RV132).',
+    vendorField: null, keyFields: ['swatchNumber'],
+    fields: [
+      { id: 'swatchNumber', header: 'Swatch Number', label: 'Swatch #' },
+      { id: 'weight',       header: 'Weight',        label: 'Weight' },
+      { id: 'productLine',  header: 'Product Line',  label: 'Product Line' },
+      { id: 'color',        header: 'Color',         label: 'Color' },
+      { id: 'vendorId',     header: 'Vendor ID',     label: 'Vendor ID' },
+    ],
+  },
+  rockboard: {
+    label: 'Rockboard', yieldEligible: false, provisional: false,
+    note: 'Confirmed against a real export (35 rows, RB01\u2013RB35). An ID plus one concatenated descriptive name \u2014 the same shape leather arrived in. If colour, finish or thickness ever need to be filtered on separately, they would have to be split at the source first.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  rowmark: {
+    label: 'Rowmark', yieldEligible: false, provisional: true,
+    note: 'Moved out of hardware, where BLC had it — it is an engraving sheet stock, not a component. Kept separate from acrylic ' +
+          'because it is ordered per job while acrylic is pulled from stock, and that difference drives escalation. ' +
+          'One line to fold into Acrylic instead if Dave disagrees.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  wood: {
+    label: 'Wood', yieldEligible: false, provisional: true,
+    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  metal: {
+    label: 'Metal', yieldEligible: false, provisional: true,
+    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  acrylic: {
+    label: 'Acrylic', yieldEligible: false, provisional: true,
+    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  carbonite: {
+    label: 'Carbonite', yieldEligible: false, provisional: true,
+    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  '4c-litho': {
+    label: '4C Litho', yieldEligible: false, provisional: true,
+    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
+  other: {
+    label: 'Other', yieldEligible: false, provisional: true,
+    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
+    vendorField: null, keyFields: ['itemId'],
+    fields: [
+      { id: 'itemId', header: 'ID',   label: 'ID' },
+      { id: 'name',   header: 'Name', label: 'Name' },
+    ],
+  },
 };
-const SHEET_FIELDS = ['swatchNumber','vendor','productLine','family','color','decoration'];
 const TOOL_FIELDS  = ['rollWidth','patternSensitive','decorationEligible','notes'];
-const YIELD_ELIGIBLE = new Set(['bookcloth','linen-paper']);
 const CFG_KEY = 'plpc_firebase_config';
+const BROWSE_CACHE = 'plpc_browsecache';
+/* Browse pulls the whole catalog — ~1,100 material docs, one Firestore read
+   each. Cached so repeated page loads cost nothing; Refresh forces a real
+   fetch, and every write in this tool invalidates it. */
+const readBrowseCache = () => { try { return JSON.parse(localStorage.getItem(BROWSE_CACHE)); } catch { return null; } };
+const writeBrowseCache = o => { try { localStorage.setItem(BROWSE_CACHE, JSON.stringify({ ...o, at: Date.now() })); } catch {} };
+const cacheAgo = ts => { const m = Math.round((Date.now() - ts) / 60000);
+  return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
 // Default project — menu-product-configurator. Overridable in the UI.
 const DEFAULT_CFG = {
   apiKey: "AIzaSyBYZU33s5qf8MLGEZcuHq9YbFLC8i-vEAk",
@@ -937,42 +657,50 @@ const $  = id => document.getElementById(id);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const slug = s => String(s ?? '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+// First two alphanumeric characters of a vendor name, e.g. "Winter & Co" -> "wi".
+const vendorAbbr = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,2);
 
 /* ============================================================
    CSV PARSE  (RFC-ish: quotes, escaped quotes, embedded commas/newlines)
    ============================================================ */
 function parseCSV(text) {
   text = text.replace(/^﻿/, '');
-  const rows = []; let row = [], cell = '', q = false;
+  const rows = []; let row = [], cell = '', q = false, atFieldStart = true;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (q) {
       if (ch === '"') { if (text[i+1] === '"') { cell += '"'; i++; } else q = false; }
       else cell += ch;
-    } else if (ch === '"') q = true;
-    else if (ch === ',') { row.push(cell); cell = ''; }
-    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
-    else if (ch !== '\r') cell += ch;
+    }
+    // A double quote only opens a quoted field at the START of a field, which is
+    // what Excel and RFC 4180 do. Treating it as special mid-field silently ate
+    // inch marks — 5.5" parsed as 5.5, which is fatal for cord lengths and any
+    // other dimension in this data.
+    else if (ch === '"' && atFieldStart) { q = true; atFieldStart = false; }
+    else if (ch === ',') { row.push(cell); cell = ''; atFieldStart = true; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; atFieldStart = true; }
+    else if (ch !== '\r') { cell += ch; atFieldStart = false; }
   }
   if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
   return rows;
 }
 
-function extract(text) {
+function extract(text, schema) {
   const rows = parseCSV(text);
   if (!rows.length) throw new Error('The file appears to be empty.');
   const header = rows[0].map(h => h.trim());
   const idx = {};
-  for (const [k, label] of Object.entries(COLS)) {
-    const i = header.findIndex(h => h.toLowerCase() === label.toLowerCase());
-    if (i === -1) throw new Error(`Column "${label}" not found. Found: ${header.filter(Boolean).join(', ')}`);
-    idx[k] = i;
+  for (const f of schema.fields) {
+    const i = header.findIndex(h => h.toLowerCase() === f.header.toLowerCase());
+    if (i === -1) throw new Error(`Column "${f.header}" not found. Found: ${header.filter(Boolean).join(', ')}`);
+    idx[f.id] = i;
   }
+  const fieldIds = schema.fields.map(f => f.id);
   const out = [];
   for (let r = 1; r < rows.length; r++) {
     const o = { _line: r + 1 };
-    for (const k of SHEET_FIELDS) o[k] = (rows[r][idx[k]] ?? '').trim();
-    if (SHEET_FIELDS.some(k => o[k] !== '')) out.push(o);
+    for (const id of fieldIds) o[id] = (rows[r][idx[id]] ?? '').trim();
+    if (fieldIds.some(id => o[id] !== '')) out.push(o);
   }
   return out;
 }
@@ -994,9 +722,10 @@ function lev(a, b) {
 }
 const sim = (a, b) => { const L = Math.max(a.length, b.length); return L ? 1 - lev(a, b) / L : 1; };
 
-function buildVendorMap(rows) {
+function buildVendorMap(rows, vendorField) {
   const counts = new Map();
-  for (const r of rows) if (r.vendor) counts.set(r.vendor, (counts.get(r.vendor) || 0) + 1);
+  if (!vendorField) return { counts, merges: [], resolve: v => v }; // this category has no vendor-like field
+  for (const r of rows) if (r[vendorField]) counts.set(r[vendorField], (counts.get(r[vendorField]) || 0) + 1);
   // pass 1: case-insensitive exact -> canonical is the highest-count spelling
   const byLower = new Map();
   for (const [v, c] of counts) {
@@ -1036,47 +765,45 @@ function buildVendorMap(rows) {
 /* ============================================================
    BUILD RECORDS + EXCEPTIONS
    ============================================================ */
-function buildRecords(rows, vendorMap, category) {
-  const skippedNoSwatch = [], skippedNoVendor = [], exactDupes = [];
+function buildRecords(rows, vendorMap, category, schema) {
+  const skippedMissingKey = [], exactDupes = [];
+  const fieldIds = schema.fields.map(f => f.id);
   const byKey = new Map();
 
-  for (const r of rows) {
-    if (!r.swatchNumber) { skippedNoSwatch.push(r); continue; }
-    const vendor = vendorMap.resolve(r.vendor);
-    if (!vendor) { skippedNoVendor.push(r); continue; }
-    const rec = {
-      id: `${category}__${slug(vendor)}__${slug(r.swatchNumber)}`,
-      categoryId: category,
-      swatchNumber: r.swatchNumber,
-      vendor,
-      productLine: r.productLine,
-      family: r.family,
-      color: r.color,
-      decoration: r.decoration,
-      _line: r._line,
-      _vendorRaw: r.vendor,
-    };
-    if (!byKey.has(rec.id)) byKey.set(rec.id, []);
-    byKey.get(rec.id).push(rec);
+  for (const raw of rows) {
+    // resolve vendor spelling first, if this category has a vendor-like field
+    const r = schema.vendorField ? { ...raw, [schema.vendorField]: vendorMap.resolve(raw[schema.vendorField]) } : raw;
+
+    const missing = schema.keyFields.filter(k => !r[k]);
+    if (missing.length) { skippedMissingKey.push({ ...r, _missing: missing }); continue; }
+
+    const id = `${category}__${schema.keyFields.map(k => slug(r[k])).join('__')}`;
+    const rec = { id, categoryId: category, _line: r._line };
+    for (const fid of fieldIds) rec[fid] = r[fid];
+    if (schema.vendorField) rec._vendorRaw = raw[schema.vendorField];
+
+    if (!byKey.has(id)) byKey.set(id, []);
+    byKey.get(id).push(rec);
   }
 
   const records = [], collisions = [];
   for (const [id, list] of byKey) {
     if (list.length === 1) { records.push(list[0]); continue; }
-    const distinct = [...new Map(list.map(x => [SHEET_FIELDS.map(f => x[f]).join(''), x])).values()];
+    const distinct = [...new Map(list.map(x => [fieldIds.map(f => x[f]).join('\u0001'), x])).values()];
     if (distinct.length === 1) { exactDupes.push({ id, rows: list }); records.push(distinct[0]); }
     else collisions.push({ id, rows: list });   // excluded from write — needs a human
   }
-  return { records, collisions, exactDupes, skippedNoSwatch, skippedNoVendor };
+  return { records, collisions, exactDupes, skippedMissingKey };
 }
 
-function diffAgainst(records, existing) {
+function diffAgainst(records, existing, schema) {
+  const fieldIds = schema.fields.map(f => f.id);
   const cur = new Map(records.map(r => [r.id, r]));
   const add = [], change = [], same = [], gone = [];
   for (const r of records) {
     const e = existing.get(r.id);
     if (!e) { add.push(r); continue; }
-    const deltas = SHEET_FIELDS.filter(f => (e[f] ?? '') !== (r[f] ?? ''));
+    const deltas = fieldIds.filter(f => (e[f] ?? '') !== (r[f] ?? ''));
     if (!deltas.length && e.active !== false) same.push(r);
     else change.push({ ...r, _deltas: deltas, _prev: e, _reactivate: e.active === false });
   }
@@ -1100,13 +827,34 @@ function goto(n) {
 /* ============================================================
    STEP 1 — load
    ============================================================ */
-$('cat').addEventListener('change', e => {
-  S.category = e.target.value;
-  const ok = YIELD_ELIGIBLE.has(S.category);
-  const f = $('yieldFlag');
-  f.textContent = ok ? 'yield-eligible' : 'no yield — spec only';
-  f.className = 'pill-s ' + (ok ? 'pill-info' : 'pill-warn2');
-});
+function populateCategorySelect() {
+  const sel = $('cat');
+  sel.innerHTML = Object.entries(CATEGORY_SCHEMAS).map(([id, s]) =>
+    `<option value="${id}">${esc(s.label)}${s.provisional ? ' (columns unconfirmed)' : ''}</option>`).join('');
+  sel.value = S.category;
+}
+
+function updateSchemaUI() {
+  const schema = CATEGORY_SCHEMAS[S.category];
+  // schema.yieldEligible is still carried on every category — the yield engine will
+  // need it — it just isn't surfaced here yet. Nothing in this tab acts on it.
+
+  $('dropCols').textContent = 'columns used: ' + schema.fields.map(x => x.header).join(', ') +
+    '  ·  unique key: ' + schema.keyFields.map(k => schema.fields.find(f => f.id === k)?.header || k).join(' + ');
+
+  const note = $('schemaNote');
+  note.innerHTML = '';
+  if (schema.provisional) {
+    note.append(el('div', 'note warn',
+      '<b>Columns unconfirmed.</b> No real export for this category has been seen yet, so these columns are a guess copied from MCS\u2019s material config. ' +
+      'Importing rows won\u2019t clear this on its own \u2014 it clears once an actual export has been read and the columns matched. ' +
+      (schema.note ? esc(schema.note) : 'Check the columns below against your file before importing.')));
+  } else if (schema.note) {
+    note.append(el('div', 'note', esc(schema.note)));
+  }
+}
+
+$('cat').addEventListener('change', e => { S.category = e.target.value; updateSchemaUI(); });
 
 $('drop').addEventListener('click', () => $('file').click());
 $('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
@@ -1115,21 +863,25 @@ $('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 
 $('drop').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
 $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); });
 
+populateCategorySelect();
+updateSchemaUI();
+
 async function loadFile(file) {
   S.fileName = file.name;
+  const schema = CATEGORY_SCHEMAS[S.category];
   const out = $('parseOut');
-  out.innerHTML = '<div class="note">Reading <b>' + esc(file.name) + '</b>…</div>';
+  out.innerHTML = '<div class="note">Reading <b>' + esc(file.name) + '</b>\u2026</div>';
   try {
-    const rows = extract(await file.text());
+    const rows = extract(await file.text(), schema);
     S.rawRows = rows;
-    S.vendorMap = buildVendorMap(rows);
-    const withSwatch = rows.filter(r => r.swatchNumber).length;
+    S.vendorMap = buildVendorMap(rows, schema.vendorField);
+    const withKey = rows.filter(r => schema.keyFields.every(k => r[k])).length;
     out.innerHTML =
-      '<div class="note ok"><b>' + esc(file.name) + '</b> parsed — ' +
+      '<div class="note ok"><b>' + esc(file.name) + '</b> parsed against the <b>' + esc(schema.label) + '</b> schema \u2014 ' +
       rows.length.toLocaleString() + ' rows with content, ' +
-      withSwatch.toLocaleString() + ' with a swatch number.</div>';
+      withKey.toLocaleString() + ' with a complete key.</div>';
     const btn = el('div', 'actions');
-    const go = el('button', 'btn-primary', 'Continue to vendor normalization');
+    const go = el('button', 'btn-primary', schema.vendorField ? 'Continue to vendor normalization' : 'Continue to review');
     go.onclick = () => { renderVendors(); goto(2); };
     btn.append(go);
     out.append(btn);
@@ -1143,10 +895,14 @@ async function loadFile(file) {
    STEP 2 — vendors
    ============================================================ */
 function renderVendors() {
-  const vm = S.vendorMap, out = $('vendorOut');
+  const schema = CATEGORY_SCHEMAS[S.category], vm = S.vendorMap, out = $('vendorOut');
   out.innerHTML = '';
+  if (!schema.vendorField) {
+    out.append(el('div', 'note', `<b>${esc(schema.label)}</b> has no vendor-like column \u2014 nothing to normalize here.`));
+    return;
+  }
   if (!vm.merges.length) {
-    out.append(el('div', 'note ok', 'No vendor variants detected — all ' + vm.counts.size + ' spellings look distinct.'));
+    out.append(el('div', 'note ok', 'No vendor variants detected \u2014 all ' + vm.counts.size + ' spellings look distinct.'));
     return;
   }
   out.append(el('div', 'note warn',
@@ -1154,7 +910,7 @@ function renderVendors() {
     'Merging drops ' + vm.counts.size + ' spellings to ' + (vm.counts.size - vm.merges.length) + '.'));
 
   const t = el('table');
-  t.innerHTML = '<thead><tr><th style="width:36px">Merge</th><th>Variant</th><th>Rows</th><th>→ Canonical</th><th>Rows</th><th>Match</th></tr></thead>';
+  t.innerHTML = '<thead><tr><th style="width:36px">Merge</th><th>Variant</th><th>Rows</th><th>\u2192 Canonical</th><th>Rows</th><th>Match</th></tr></thead>';
   const tb = el('tbody');
   vm.merges.forEach((m, i) => {
     const tr = el('tr');
@@ -1179,12 +935,13 @@ $('back1').onclick = () => goto(1);
 $('toStep3').onclick = async () => { await prepareDiff(); goto(3); };
 
 /* ============================================================
-   STEP 3 — diff
+   STEP 3 \u2014 diff
    ============================================================ */
 async function prepareDiff() {
-  S.parsed = buildRecords(S.rawRows, S.vendorMap, S.category);
+  const schema = CATEGORY_SCHEMAS[S.category];
+  S.parsed = buildRecords(S.rawRows, S.vendorMap, S.category, schema);
   S.existing = await fetchExisting(S.category);
-  S.diff = diffAgainst(S.parsed.records, S.existing);
+  S.diff = diffAgainst(S.parsed.records, S.existing, schema);
   renderDiff();
 }
 
@@ -1201,7 +958,7 @@ let activeTab = 'add';
 function renderDiff() {
   const { add, change, same, gone } = S.diff;
   const p = S.parsed;
-  const excCount = p.collisions.length + p.skippedNoSwatch.length + p.skippedNoVendor.length;
+  const excCount = p.collisions.length + p.skippedMissingKey.length;
 
   $('tiles').innerHTML =
     tile('new',     add.length,    'New')     + tile('changed', change.length, 'Changed') +
@@ -1232,12 +989,13 @@ function renderDiff() {
 const tile = (c, v, k) => `<div class="tile ${c}"><div class="v">${v.toLocaleString()}</div><div class="k">${k}</div></div>`;
 
 function renderTable(kind) {
+  const schema = CATEGORY_SCHEMAS[S.category];
+  const fields = schema.fields; // [{id, header, label}]
   const { add, change, same, gone } = S.diff, p = S.parsed;
   const head = h => '<table><thead><tr>' + h.map(x => `<th>${x}</th>`).join('') + '</tr></thead><tbody>';
-  const cell = (r, f) => `<td>${esc(r[f]) || '<span class="muted">—</span>'}</td>`;
-  const specCols = ['Swatch','Vendor','Product Line','Family','Color','Decoration'];
-  const specRow  = r => `<td class="mono">${esc(r.swatchNumber)}</td>` +
-    ['vendor','productLine','family','color','decoration'].map(f => cell(r, f)).join('');
+  const cell = (r, f) => `<td${f.id === schema.keyFields[schema.keyFields.length-1] ? ' class="mono"' : ''}>${esc(r[f.id]) || '<span class="muted">—</span>'}</td>`;
+  const specCols = fields.map(f => f.label);
+  const specRow  = r => fields.map(f => cell(r, f)).join('');
 
   if (kind === 'add' || kind === 'same') {
     const list = kind === 'add' ? add : same;
@@ -1247,11 +1005,11 @@ function renderTable(kind) {
   }
   if (kind === 'change') {
     if (!change.length) return `<div class="empty">Nothing here.</div>`;
-    return head(['Swatch','Vendor','Field','Was','Now']) + change.slice(0, 500).map(r =>
+    const keyLabel = schema.keyFields.map(k => fields.find(f => f.id === k)?.label || k).join(' / ');
+    return head([keyLabel, 'Field', 'Was', 'Now']) + change.slice(0, 500).map(r =>
       r._deltas.map((f, i) => '<tr>' +
-        (i === 0 ? `<td class="mono" rowspan="${r._deltas.length}">${esc(r.swatchNumber)}</td>
-                    <td rowspan="${r._deltas.length}">${esc(r.vendor)}</td>` : '') +
-        `<td class="mono">${f}</td><td class="was">${esc(r._prev[f]) || '—'}</td><td class="now">${esc(r[f]) || '—'}</td></tr>`
+        (i === 0 ? `<td class="mono" rowspan="${r._deltas.length}">${esc(schema.keyFields.map(k => r[k]).join(' / '))}</td>` : '') +
+        `<td class="mono">${esc(fields.find(x => x.id === f)?.label || f)}</td><td class="was">${esc(r._prev[f]) || '—'}</td><td class="now">${esc(r[f]) || '—'}</td></tr>`
       ).join('')).join('') + '</tbody></table>' + more(change.length);
   }
   if (kind === 'gone') {
@@ -1261,27 +1019,22 @@ function renderTable(kind) {
   }
   // exceptions
   let h = '';
+  const keyLabel = schema.keyFields.map(k => fields.find(f => f.id === k)?.label || k).join(' + ');
   if (p.collisions.length) {
     h += section('Duplicate keys — excluded from the import', 'err',
-      `${p.collisions.length} Vendor + Swatch Number ${p.collisions.length === 1 ? 'key maps' : 'keys map'} to more than one distinct material. These are data-entry errors in the spreadsheet, so nothing is written for them — fix the source and re-import.`,
-      head(['Key','Line','Vendor','Product Line','Family','Color','Decoration']) +
+      `${p.collisions.length} ${keyLabel} ${p.collisions.length === 1 ? 'key maps' : 'keys map'} to more than one distinct material. These are data-entry errors in the spreadsheet, so nothing is written for them — fix the source and re-import.`,
+      head(['Key', 'Line', ...fields.map(f => f.label)]) +
       p.collisions.map(c => c.rows.map((r, i) =>
         `<tr>${i === 0 ? `<td class="mono" rowspan="${c.rows.length}">${esc(c.id.split('__').slice(1).join(' / '))}</td>` : ''}` +
-        `<td class="muted">${r._line}</td><td>${esc(r.vendor)}</td><td>${esc(r.productLine)}</td>` +
-        `<td>${esc(r.family)}</td><td>${esc(r.color)}</td><td>${esc(r.decoration) || '—'}</td></tr>`).join('')).join('') +
+        `<td class="muted">${r._line}</td>` + fields.map(f => `<td>${esc(r[f.id]) || '—'}</td>`).join('') + `</tr>`).join('')).join('') +
       '</tbody></table>');
   }
-  if (p.skippedNoVendor.length) {
-    h += section('Skipped — swatch number but no vendor', 'warn',
-      `${p.skippedNoVendor.length} rows have a swatch number and nothing else. Not importable without a vendor, since vendor is half the key.`,
-      head(['Line','Swatch']) + p.skippedNoVendor.slice(0, 200).map(r =>
-        `<tr><td class="muted">${r._line}</td><td class="mono">${esc(r.swatchNumber)}</td></tr>`).join('') + '</tbody></table>');
-  }
-  if (p.skippedNoSwatch.length) {
-    h += section('Skipped — no swatch number', 'warn',
-      `${p.skippedNoSwatch.length} rows have content but no swatch number, so they have no stable identity across imports.`,
-      head(['Line','Vendor','Product Line','Family','Color']) + p.skippedNoSwatch.slice(0, 200).map(r =>
-        `<tr><td class="muted">${r._line}</td><td>${esc(r.vendor)}</td><td>${esc(r.productLine)}</td><td>${esc(r.family)}</td><td>${esc(r.color)}</td></tr>`).join('') +
+  if (p.skippedMissingKey.length) {
+    h += section(`Skipped — missing ${keyLabel}`, 'warn',
+      `${p.skippedMissingKey.length} rows are missing at least one field the ${schema.label} key requires (${keyLabel}), so they have no stable identity across imports.`,
+      head(['Line', 'Missing', ...fields.map(f => f.label)]) + p.skippedMissingKey.slice(0, 200).map(r =>
+        `<tr><td class="muted">${r._line}</td><td class="mono">${(r._missing || []).map(k => fields.find(f => f.id === k)?.label || k).join(', ')}</td>` +
+        fields.map(f => `<td>${esc(r[f.id]) || '—'}</td>`).join('') + `</tr>`).join('') +
       '</tbody></table>');
   }
   if (p.exactDupes.length) {
@@ -1315,18 +1068,19 @@ function download(name, text, type) {
 const csvCell = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
 
 $('dlExc').onclick = () => {
-  const p = S.parsed, L = [['issue','line','key','vendor','swatch','productLine','family','color','decoration','detail']];
+  const schema = CATEGORY_SCHEMAS[S.category], fields = schema.fields;
+  const p = S.parsed, L = [['issue', 'line', 'key', ...fields.map(f => f.id), 'detail']];
   p.collisions.forEach(c => c.rows.forEach(r =>
-    L.push(['duplicate key', r._line, c.id, r.vendor, r.swatchNumber, r.productLine, r.family, r.color, r.decoration, 'excluded — fix in spreadsheet'])));
-  p.skippedNoVendor.forEach(r => L.push(['no vendor', r._line, '', '', r.swatchNumber, r.productLine, r.family, r.color, r.decoration, 'skipped']));
-  p.skippedNoSwatch.forEach(r => L.push(['no swatch number', r._line, '', r.vendor, '', r.productLine, r.family, r.color, r.decoration, 'skipped']));
-  p.exactDupes.forEach(d => L.push(['identical duplicate', d.rows[0]._line, d.id, d.rows[0].vendor, d.rows[0].swatchNumber, '', '', '', '', d.rows.length + ' identical rows merged']));
-  S.vendorMap.merges.filter(m => m.apply).forEach(m => L.push(['vendor normalized', '', '', m.from, '', '', '', '', '', 'merged into ' + m.to + ' (' + m.count + ' rows)']));
+    L.push(['duplicate key', r._line, c.id, ...fields.map(f => r[f.id]), 'excluded — fix in spreadsheet'])));
+  p.skippedMissingKey.forEach(r => L.push(['missing ' + (r._missing || []).join('/'), r._line, '', ...fields.map(f => r[f.id]), 'skipped']));
+  p.exactDupes.forEach(d => L.push(['identical duplicate', d.rows[0]._line, d.id, ...fields.map(f => d.rows[0][f.id]), d.rows.length + ' identical rows merged']));
+  S.vendorMap.merges.filter(m => m.apply).forEach(m => L.push(['vendor normalized', '', '', ...fields.map(() => ''), 'merged "' + m.from + '" into "' + m.to + '" (' + m.count + ' rows)']));
   download(`material-import-exceptions-${S.category}.csv`, L.map(r => r.map(csvCell).join(',')).join('\n'), 'text/csv');
 };
 
 $('dlJson').onclick = () => {
-  const clean = r => { const o = {}; SHEET_FIELDS.forEach(f => o[f] = r[f]); return { id: r.id, categoryId: r.categoryId, ...o }; };
+  const schema = CATEGORY_SCHEMAS[S.category], fieldIds = schema.fields.map(f => f.id);
+  const clean = r => { const o = {}; fieldIds.forEach(f => o[f] = r[f]); return { id: r.id, categoryId: r.categoryId, ...o }; };
   download(`material-payload-${S.category}.json`, JSON.stringify({
     category: S.category, sourceFile: S.fileName, generated: new Date().toISOString(),
     counts: { add: S.diff.add.length, change: S.diff.change.length, same: S.diff.same.length,
@@ -1390,7 +1144,7 @@ async function runApply() {
         else {
           const payload = { categoryId: S.category, active: true, source: 'csv',
             sourceFile: S.fileName, updatedAt: serverTimestamp() };
-          SHEET_FIELDS.forEach(f => payload[f] = r[f]);
+          CATEGORY_SCHEMAS[S.category].fields.forEach(f => payload[f.id] = r[f.id]);
           batch.set(ref, payload, { merge: true });   // merge preserves TOOL_FIELDS
         }
       }
@@ -1400,11 +1154,20 @@ async function runApply() {
       status.textContent = `Writing ${done.toLocaleString()} of ${ops.length.toLocaleString()}…`;
     }
     status.className = 'note ok';
+    B.loaded = false; localStorage.removeItem(BROWSE_CACHE);   // must refetch what was just written
     status.innerHTML = `<b>Done.</b> ${ops.length.toLocaleString()} changes written to <code class="k">materials</code>. ` +
       (S.parsed.collisions.length ? `${S.parsed.collisions.length} duplicate-key materials were skipped — see the exceptions CSV.` : '');
     btn.textContent = 'Applied';
-    S.existing = await fetchExisting(S.category);
-    S.diff = diffAgainst(S.parsed.records, S.existing);
+    // Refresh the in-memory snapshot so a re-run diffs against what's now in Firestore.
+    // Deliberately isolated: the writes are already committed at this point, so a failure
+    // here is a stale-view problem, not a write problem, and must not be reported as one.
+    try {
+      S.existing = await fetchExisting(S.category);
+      S.diff = diffAgainst(S.parsed.records, S.existing, CATEGORY_SCHEMAS[S.category]);
+    } catch (refreshErr) {
+      status.innerHTML += '<br><span class="muted">Note: could not refresh the local snapshot after writing (' +
+        esc(refreshErr.message) + '). The data is written — reload the page before importing this category again.</span>';
+    }
   } catch (err) {
     status.className = 'note err';
     status.innerHTML = '<b>The write failed partway through.</b><br>' + esc(err.message) +
@@ -1413,6 +1176,651 @@ async function runApply() {
       'If this says “permission denied”, the security rules are blocking writes to <code class="k">materials</code>.</span>';
     btn.disabled = false; btn.textContent = 'Retry';
   }
+}
+
+/* ============================================================
+   MODE SWITCH — Import vs Browse
+   ============================================================ */
+function setMode(m) {
+  $('modenav').querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.m === m));
+  $('importMode').hidden = m !== 'import';
+  $('browseMode').hidden = m !== 'browse';
+  const isDefs = m === 'hardware' || m === 'decorations';
+  $('hwMode').hidden = !isDefs;
+  $('deptMode').hidden = m !== 'departments';
+  if (m === 'browse') loadBrowse();
+  if (isDefs) { H = DEFS[m === 'hardware' ? 'hardware' : 'decorations']; applyDefsCopy(); loadHardware(); }
+  $('escMode').hidden = m !== 'escalation';
+  if (m === 'departments') loadDepartments();
+  if (m === 'escalation') loadEscalation();
+}
+$('modenav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-m]');
+  if (b) setMode(b.dataset.m);
+});
+
+
+/* ============================================================
+   DEPARTMENTS + THE TAGS THAT INFER THEM
+   ============================================================ */
+async function loadDepartments(force) {
+  if (!S.db) { $('deptBody').innerHTML = '<div class="empty">Not connected to Firestore yet.</div>'; return; }
+  if (DEPTS.loaded && !force) { renderDepartments(); return; }
+  if (DEPTS.loading) return;
+  DEPTS.loading = true;
+  $('deptBody').innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { collection, getDocs } = S.fb;
+    const [dSnap, cSnap, decSnap] = await Promise.all([
+      getDocs(collection(S.db, 'departments')),
+      getDocs(collection(S.db, 'materialCategories')),
+      getDocs(collection(S.db, 'decorations')),
+    ]);
+    DEPTS.list = []; dSnap.forEach(d => DEPTS.list.push({ id: d.id, ...d.data() }));
+    DEPTS.list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    MATCATS.byId = {}; cSnap.forEach(d => (MATCATS.byId[d.id] = { id: d.id, ...d.data() }));
+    MATCATS.loaded = true;
+    DEFS.decorations.types = []; decSnap.forEach(d => DEFS.decorations.types.push({ id: d.id, ...d.data() }));
+    DEFS.decorations.types.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    DEPTS.loaded = true; DEPTS.dirty.clear();
+    renderDepartments();
+  } catch (err) {
+    $('deptBody').innerHTML = '<div class="empty">Could not load departments.<br><span class="muted">' + esc(err.message) + '</span></div>';
+  } finally { DEPTS.loading = false; }
+}
+
+async function seedDepartments() {
+  const btn = $('deptSeed'); if (btn) { btn.disabled = true; btn.textContent = 'Seeding…'; }
+  try {
+    const { doc, writeBatch, serverTimestamp } = S.fb;
+    const batch = writeBatch(S.db);
+    DEPT_SEED.forEach(d => {
+      const { id, ...rest } = d;
+      batch.set(doc(S.db, 'departments', id), { ...rest, active: true, updatedAt: serverTimestamp() }, { merge: true });
+    });
+    // Only the tags there is actual evidence for. Everything else stays empty on
+    // purpose so the gaps are visible rather than invented.
+    batch.set(doc(S.db, 'materialCategories', 'metal'),
+      { departments: ['metal'], updatedAt: serverTimestamp() }, { merge: true });
+    await batch.commit();
+    DEPTS.loaded = false; B.loaded = false;
+    await loadDepartments(true);
+  } catch (err) {
+    $('deptStatus').innerHTML = `<div class="note err"><b>Seeding failed.</b> ${esc(err.message)}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+  }
+}
+
+function renderDepartments() {
+  if (!DEPTS.list.length) {
+    $('deptStatus').innerHTML = '<div class="note warn"><b>No departments in Firestore yet.</b> The six from BLC are bundled ' +
+      'with this page. <div class="actions"><button class="btn-primary" id="deptSeed">Seed 6 departments</button></div></div>';
+    $('deptSeed').onclick = seedDepartments;
+    $('deptBody').innerHTML = '';
+    return;
+  }
+  $('deptStatus').innerHTML = '';
+  const body = $('deptBody');
+  body.innerHTML = '';
+
+  DEPTS.list.forEach(d => {
+    const card = el('div', 'hw-field');
+    const decs = DEFS.decorations.types.filter(t => (t.departments || []).includes(d.id));
+    const cats = Object.keys(CATEGORY_SCHEMAS).filter(id => (MATCATS.byId[id]?.departments || []).includes(d.id));
+    card.innerHTML =
+      `<div class="hw-field-head"><div><b style="font-size:var(--fontsize-body-lg)">${esc(d.label)}</b>` +
+      `<span class="muted" style="margin-left:8px">${decs.length + cats.length} thing${decs.length + cats.length === 1 ? '' : 's'} pull it in</span></div></div>` +
+      (d.note ? `<p class="hint" style="margin-top:0">${esc(d.note)}</p>` : '');
+    body.append(card);
+
+    const group = (title, items, isIn, toggle) => {
+      card.append(el('div', 'hw-opts-count', title));
+      const wrap = el('div', 'cat-pills');
+      items.forEach(it => {
+        const on = isIn(it.id);
+        const b = el('button', 'cat-pill' + (on ? ' active' : ''));
+        b.textContent = it.label;
+        b.onclick = () => toggle(it.id, !on);
+        wrap.append(b);
+      });
+      card.append(wrap);
+    };
+
+    group('Decorations', DEFS.decorations.types.map(t => ({ id: t.id, label: t.label })),
+      id => (DEFS.decorations.types.find(t => t.id === id).departments || []).includes(d.id),
+      async (id, on) => {
+        const t = DEFS.decorations.types.find(x => x.id === id);
+        t.departments = on ? [...(t.departments || []), d.id] : (t.departments || []).filter(x => x !== d.id);
+        await saveDeptTag('decorations', id, t.departments);
+        renderDepartments();
+      });
+
+    group('Material categories', Object.entries(CATEGORY_SCHEMAS).map(([id, sc]) => ({ id, label: sc.label })),
+      id => (MATCATS.byId[id]?.departments || []).includes(d.id),
+      async (id, on) => {
+        const rec = MATCATS.byId[id] || (MATCATS.byId[id] = { id, departments: [] });
+        rec.departments = on ? [...(rec.departments || []), d.id] : (rec.departments || []).filter(x => x !== d.id);
+        await saveDeptTag('materialCategories', id, rec.departments);
+        renderDepartments();
+      });
+  });
+
+  const empty = DEPTS.list.filter(d =>
+    !DEFS.decorations.types.some(t => (t.departments || []).includes(d.id)) &&
+    !Object.keys(CATEGORY_SCHEMAS).some(id => (MATCATS.byId[id]?.departments || []).includes(d.id)));
+  if (empty.length) body.append(el('div', 'note warn',
+    `<b>${empty.length} department${empty.length === 1 ? '' : 's'} nothing pulls in:</b> ${empty.map(d => esc(d.label)).join(', ')}. ` +
+    'A department with an empty bucket can never be inferred, so it can never fire its escalation rule either.'));
+}
+
+/* ============================================================
+   ESCALATION EDITOR — a bucket per tier
+   ============================================================ */
+async function loadEscalation(force) {
+  if (!S.db) { $('escBody').innerHTML = '<div class="empty">Not connected to Firestore yet.</div>'; return; }
+  if (ESC.loaded && !force) { renderEscalation(); return; }
+  if (ESC.loading) return;
+  ESC.loading = true;
+  $('escBody').innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { collection, getDocs } = S.fb;
+    // Departments, decorations and binding hardware are all pickable as rules,
+    // so they have to be on hand before the buckets can render.
+    const [eSnap, dSnap, decSnap, hwSnap, catSnap] = await Promise.all([
+      getDocs(collection(S.db, 'escalation')),
+      getDocs(collection(S.db, 'departments')),
+      getDocs(collection(S.db, 'decorations')),
+      getDocs(collection(S.db, 'hardware')),
+      getDocs(collection(S.db, 'materialCategories')),   // needed for the can-never-fire check
+    ]);
+    MATCATS.byId = {}; catSnap.forEach(d => (MATCATS.byId[d.id] = { id: d.id, ...d.data() }));
+    const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999);
+    ESC.tiers = []; eSnap.forEach(d => ESC.tiers.push({ id: d.id, ...d.data() })); ESC.tiers.sort(byOrder);
+    DEPTS.list = []; dSnap.forEach(d => DEPTS.list.push({ id: d.id, ...d.data() })); DEPTS.list.sort(byOrder);
+    DEFS.decorations.types = []; decSnap.forEach(d => DEFS.decorations.types.push({ id: d.id, ...d.data() }));
+    DEFS.decorations.types.sort(byOrder);
+    DEFS.hardware.types = []; hwSnap.forEach(d => DEFS.hardware.types.push({ id: d.id, ...d.data() }));
+    DEFS.hardware.types.sort(byOrder);
+    ESC.loaded = true; ESC.dirty.clear();
+    renderEscalation();
+  } catch (err) {
+    $('escBody').innerHTML = '<div class="empty">Could not load escalation.<br><span class="muted">' + esc(err.message) + '</span></div>';
+  } finally { ESC.loading = false; }
+}
+
+async function seedEscalation() {
+  const btn = $('escSeed'); if (btn) { btn.disabled = true; btn.textContent = 'Seeding…'; }
+  try {
+    const { doc, writeBatch, serverTimestamp } = S.fb;
+    const batch = writeBatch(S.db);
+    ESC_SEED.forEach(t => {
+      const { id, ...rest } = t;
+      batch.set(doc(S.db, 'escalation', id), { ...rest, updatedAt: serverTimestamp() }, { merge: true });
+    });
+    await batch.commit();
+    ESC.loaded = false;
+    await loadEscalation(true);
+  } catch (err) {
+    $('escStatus').innerHTML = `<div class="note err"><b>Seeding failed.</b> ${esc(err.message)}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+  }
+}
+
+const ruleText = r => {
+  if (r.type === 'qty')        return `Quantity ${r.op || '>'} ${Number(r.value || 0).toLocaleString()}`;
+  if (r.type === 'department') return (DEPTS.list.find(d => d.id === r.id)?.label || r.id) + ' required';
+  if (r.type === 'decoration') return DEFS.decorations.types.find(d => d.id === r.id)?.label || r.id;
+  if (r.type === 'binding')    return (DEFS.hardware.types.find(d => d.id === r.id)?.label || r.id) + ' binding';
+  return r.text || '(unnamed condition)';
+};
+// A rule can outlive the thing it names, now that definitions can be deleted.
+const ruleOrphaned = r =>
+  (r.type === 'department' && !DEPTS.list.some(d => d.id === r.id)) ||
+  (r.type === 'decoration' && !DEFS.decorations.types.some(d => d.id === r.id)) ||
+  (r.type === 'binding'    && !DEFS.hardware.types.some(d => d.id === r.id));
+const RULE_KINDS = [
+  ['qty', 'Quantity'], ['department', 'Department'], ['decoration', 'Decoration'],
+  ['binding', 'Binding type'], ['condition', 'Other condition'],
+];
+
+function renderEscalation() {
+  if (!ESC.tiers.length) {
+    $('escStatus').innerHTML = '<div class="note warn"><b>No escalation rules in Firestore yet.</b> The four tiers and every ' +
+      'rule in BLC’s determineTierFromState are bundled with this page. ' +
+      '<div class="actions"><button class="btn-primary" id="escSeed">Seed 4 tiers from BLC</button></div></div>';
+    $('escSeed').onclick = seedEscalation;
+    $('escBody').innerHTML = '';
+    return;
+  }
+  $('escStatus').innerHTML = '';
+  const body = $('escBody');
+  body.innerHTML = '';
+
+  const touch = id => { ESC.dirty.add(id);
+    const st = $('escState'); if (st) { st.textContent = 'Unsaved changes'; st.className = 'hw-save-state dirty'; }
+    const sv = $('escSave'); if (sv) sv.disabled = false; };
+
+  ESC.tiers.forEach(t => {
+    const card = el('div', 'hw-field');
+    const gaps = (t.rules || []).filter(r => r.gap).length;
+    card.innerHTML = `
+      <div class="hw-field-head">
+        <div><b style="font-size:var(--fontsize-body-lg)">Tier ${esc(t.id)} — ${esc(t.label || '')}</b>
+          <span class="muted" style="margin-left:8px">${(t.rules || []).length} rule${(t.rules || []).length === 1 ? '' : 's'}${
+            gaps ? ` · ${gaps} not yet triggerable` : ''}</span></div>
+        <div class="shrink" style="min-width:190px">
+          <label class="fld">Lead time</label>
+          <div style="display:flex; align-items:center; gap:6px">
+            <input type="text" class="esc-days" inputmode="numeric" value="${t.leadDays ?? ''}" placeholder="—" style="width:70px">
+            <span class="muted">working days</span>
+          </div>
+        </div>
+      </div>
+      ${t.note ? `<p class="hint" style="margin-top:0">${esc(t.note)}</p>` : ''}
+      <div class="cat-pills esc-rules"></div>
+      <div class="actions esc-add"></div>`;
+    body.append(card);
+
+    card.querySelector('.esc-days').oninput = e => {
+      const v = e.target.value.trim();
+      t.leadDays = v === '' ? null : (parseInt(v, 10) || 0);
+      touch(t.id);
+    };
+
+    const chips = card.querySelector('.esc-rules');
+    (t.rules || []).forEach((r, i) => {
+      const b = el('button', 'cat-pill');
+      const orphan = ruleOrphaned(r);
+      b.innerHTML = `<span>${esc(ruleText(r))}</span>` +
+        (r.qualifier ? ` <span class="cnt">${esc(r.qualifier)}</span>` : '') +
+        (orphan ? ' <span class="pill-s pill-err" title="The thing this rule names no longer exists">deleted</span>' : '') +
+        (r.gap ? ' <span class="pill-s pill-warn2" title="' + esc(r.gap) + '">no trigger yet</span>' : '') +
+        ' <span class="cnt">✕</span>';
+      b.title = r.gap || '';
+      b.onclick = () => { t.rules.splice(i, 1); touch(t.id); renderEscalation(); };
+      chips.append(b);
+    });
+    if (!(t.rules || []).length) chips.append(el('span', 'muted', 'nothing escalates to this tier'));
+
+    // add-rule row: pick a kind, then a target
+    const add = card.querySelector('.esc-add');
+    add.innerHTML =
+      `<select class="esc-kind" style="width:auto">${RULE_KINDS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>` +
+      '<span class="esc-target"></span>' +
+      '<button class="btn-ghost esc-go">+ Add rule</button>';
+    const kindSel = add.querySelector('.esc-kind'), target = add.querySelector('.esc-target');
+
+    const paintTarget = () => {
+      const k = kindSel.value;
+      if (k === 'qty') {
+        target.innerHTML = '<select class="esc-op" style="width:auto"><option>&gt;</option><option>&ge;</option></select>' +
+          '<input type="text" class="esc-val" inputmode="numeric" placeholder="qty" style="width:90px">';
+      } else if (k === 'condition') {
+        target.innerHTML = '<input type="text" class="esc-text" placeholder="Describe the condition" style="min-width:240px">';
+      } else {
+        const list = k === 'department' ? DEPTS.list
+          : k === 'decoration' ? DEFS.decorations.types
+          : DEFS.hardware.types.filter(h => h.isBinding);
+        target.innerHTML = list.length
+          ? `<select class="esc-id" style="width:auto">${list.map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('')}</select>`
+          : '<span class="muted">none defined yet</span>';
+      }
+    };
+    kindSel.onchange = paintTarget; paintTarget();
+
+    add.querySelector('.esc-go').onclick = () => {
+      const k = kindSel.value;
+      let rule = null;
+      if (k === 'qty') {
+        const v = parseInt(add.querySelector('.esc-val')?.value, 10);
+        if (!v) return;
+        rule = { type: 'qty', op: add.querySelector('.esc-op').value, value: v };
+      } else if (k === 'condition') {
+        const txt = add.querySelector('.esc-text')?.value.trim();
+        if (!txt) return;
+        rule = { type: 'condition', text: txt };
+      } else {
+        const id = add.querySelector('.esc-id')?.value;
+        if (!id) return;
+        rule = { type: k, id };
+      }
+      t.rules = [...(t.rules || []), rule];
+      touch(t.id); renderEscalation();
+    };
+  });
+
+  const bar = el('div', 'hw-bar');
+  bar.innerHTML = `<span class="hw-save-state ${ESC.dirty.size ? 'dirty' : ''}" id="escState">${
+    ESC.dirty.size ? 'Unsaved changes' : 'Saved'}</span><span class="spacer"></span>` +
+    `<button class="btn-primary" id="escSave"${ESC.dirty.size ? '' : ' disabled'}>Save escalation</button>`;
+  body.append(bar);
+  $('escSave').onclick = saveEscalation;
+
+  // Rules that name a department nothing can pull in will never fire.
+  const dead = [];
+  ESC.tiers.forEach(t => (t.rules || []).filter(r => r.type === 'department').forEach(r => {
+    if (ruleOrphaned(r)) return;
+    const pulled = DEFS.decorations.types.some(d => (d.departments || []).includes(r.id)) ||
+                   Object.keys(CATEGORY_SCHEMAS).some(id => (MATCATS.byId[id]?.departments || []).includes(r.id));
+    if (!pulled) dead.push(DEPTS.list.find(d => d.id === r.id)?.label || r.id);
+  }));
+  const orphans = ESC.tiers.flatMap(t => (t.rules || []).filter(ruleOrphaned).map(ruleText));
+  if (orphans.length) body.append(el('div', 'note err',
+    `<b>Rules pointing at something deleted:</b> ${[...new Set(orphans)].map(esc).join(', ')}. ` +
+    'Remove them, or re-create what they name.'));
+  if (dead.length) body.append(el('div', 'note warn',
+    `<b>Rules that can never fire:</b> ${[...new Set(dead)].map(esc).join(', ')}. ` +
+    'Nothing in the Departments tab pulls these in, so no job can reach them. Either tag something to the department or drop the rule.'));
+}
+
+async function saveEscalation() {
+  const btn = $('escSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const { doc, writeBatch, serverTimestamp } = S.fb;
+    const batch = writeBatch(S.db);
+    ESC.tiers.filter(t => ESC.dirty.has(t.id)).forEach(t => {
+      const { id, ...rest } = t;
+      batch.set(doc(S.db, 'escalation', id), { ...rest, updatedAt: serverTimestamp() }, { merge: true });
+    });
+    await batch.commit();
+    ESC.dirty.clear();
+    $('escState').textContent = 'Saved'; $('escState').className = 'hw-save-state ok';
+    btn.textContent = 'Save escalation';
+  } catch (err) {
+    $('escStatus').innerHTML = `<div class="note err"><b>Could not save.</b> ${esc(err.message)}</div>`;
+    btn.disabled = false; btn.textContent = 'Retry save';
+  }
+}
+
+async function saveDeptTag(coll, id, departments) {
+  try {
+    const { doc, setDoc, serverTimestamp } = S.fb;
+    await setDoc(doc(S.db, coll, id), { departments, updatedAt: serverTimestamp() }, { merge: true });
+    B.loaded = false;
+    if (coll === 'decorations') DEFS.decorations.loaded = false;
+  } catch (err) {
+    $('deptStatus').innerHTML = `<div class="note err"><b>Could not save the tag.</b> ${esc(err.message)}</div>`;
+  }
+}
+
+/* ============================================================
+   BROWSE CATALOG — for walking Dave/Colin through what Creative will see
+   ============================================================ */
+/* Browse shows the whole reference surface — materials AND hardware — because
+   that is what Creative will actually pick from. The other two tabs edit; this
+   one only looks. Hardware is expanded to one row per valid combination, since
+   a type with an option list is not one thing a person can choose, it's many. */
+const B = { all: [], hw: [], dec: [], rows: [], loaded: false, loading: false, activeCat: 'all', search: '' };
+
+const MAX_IMPLIED = 200;   // safety valve on flat-type cross products
+
+// Every combination a flat (independent-list) type implies. Fields with no
+// options can't be enumerated, so they come through blank — free text at pick time.
+function crossProduct(fields) {
+  let out = [{}];
+  for (const f of fields) {
+    const opts = (f.options || []).length ? f.options : [''];
+    const next = [];
+    for (const row of out) {
+      for (const o of opts) {
+        next.push({ ...row, [f.id]: o });
+        if (next.length >= MAX_IMPLIED) break;
+      }
+      if (next.length >= MAX_IMPLIED) break;
+    }
+    out = next;
+  }
+  return out;
+}
+
+/* One flat list the table and the pills both read from. Materials are one row
+   per document; hardware is one row per combination, tagged with whether that
+   combination is confirmed (an explicit row in a combinations grid) or merely
+   implied (the cross product of independent lists — which the cord matrix
+   proved can be wildly wrong). */
+function buildBrowseRows() {
+  const rows = [];
+
+  B.all.forEach(m => {
+    const sch = CATEGORY_SCHEMAS[m.categoryId];
+    const key = sch
+      ? (sch.keyDisplay ? sch.keyDisplay(m) : sch.keyFields.map(k => m[k]).filter(Boolean).join(' / '))
+      : (m.vendor || m.swatchNumber || '');
+    const detailFields = sch ? sch.fields.filter(f => !sch.keyFields.includes(f.id)) : [];
+    const details = detailFields.map(f => m[f.id]).filter(Boolean);
+    rows.push({
+      kind: 'material', cat: m.categoryId, catLabel: sch?.label || m.categoryId || '—',
+      active: m.active !== false, doc: m, key, details,
+      departments: MATCATS.byId[m.categoryId]?.departments || [],
+      search: [key, ...Object.values(m).filter(v => typeof v === 'string'),
+               ...(MATCATS.byId[m.categoryId]?.departments || []).map(deptLabel)].join(' ').toLowerCase(),
+    });
+  });
+
+  // Hardware and decorations are the same shape — a definition with fields, and
+  // either a checked combination list or independent lists implying a cross product.
+  [['hardware', B.hw], ['decoration', B.dec]].forEach(([kind, list]) => {
+    list.forEach(t => {
+      const fields = t.fields || [];
+      if (!fields.length) return;
+      const confirmed = t.mode === 'combos';
+      const combos = confirmed
+        ? (t.combos || []).filter(r => fields.every(f => String(r[f.id] ?? '').trim()))
+        : crossProduct(fields);
+      combos.forEach(c => {
+        const vals = fields.map(f => String(c[f.id] ?? '').trim());
+        rows.push({
+          kind, cat: t.id, catLabel: t.label || t.id,
+          active: t.active !== false, defType: t, values: c, vals,
+          isBinding: !!t.isBinding, departments: t.departments || [],
+          basis: confirmed ? 'confirmed' : (vals.some(Boolean) ? 'implied' : 'free text'),
+          search: [t.label, ...vals, ...(t.departments || []).map(deptLabel)].join(' ').toLowerCase(),
+        });
+      });
+    });
+  });
+
+  B.rows = rows;
+}
+
+async function loadBrowse(force) {
+  const wrap = $('browseTblWrap');
+  if (!S.db) {
+    wrap.innerHTML = '<div class="empty">Not connected to Firestore yet.<br>' +
+      '<button class="btn-ghost" id="goFixCfg" style="margin-top:8px">Open Firebase settings</button></div>';
+    $('goFixCfg').onclick = () => { setMode('import'); goto(4); $('cfgBox').open = true; };
+    $('catPills').innerHTML = ''; $('browseCount').textContent = '';
+    return;
+  }
+  if (B.loaded && !force) return renderBrowse();
+  if (B.loading) return;
+  // Reuse the cached snapshot unless a refresh was asked for.
+  if (!force) {
+    const c = readBrowseCache();
+    if (c && c.all) {
+      B.all = c.all; B.hw = c.hw || []; B.dec = c.dec || [];
+      DEPTS.list = c.depts || []; MATCATS.byId = c.matcats || {};
+      buildBrowseRows(); B.loaded = true; B.cacheAt = c.at;
+      renderBrowse();
+      return;
+    }
+  }
+  B.loading = true;
+  wrap.innerHTML = '<div class="empty">Loading the catalog…</div>';
+  try {
+    const { collection, getDocs } = S.fb;
+    const [mSnap, hSnap, dSnap, deptSnap, catSnap] = await Promise.all([
+      getDocs(collection(S.db, 'materials')),
+      getDocs(collection(S.db, 'hardware')),
+      getDocs(collection(S.db, 'decorations')),
+      getDocs(collection(S.db, 'departments')),
+      getDocs(collection(S.db, 'materialCategories')),
+    ]);
+    DEPTS.list = []; deptSnap.forEach(d => DEPTS.list.push({ id: d.id, ...d.data() }));
+    DEPTS.list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    MATCATS.byId = {}; catSnap.forEach(d => (MATCATS.byId[d.id] = { id: d.id, ...d.data() }));
+    const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999);
+    B.all = []; mSnap.forEach(d => B.all.push({ id: d.id, ...d.data() }));
+    B.hw  = []; hSnap.forEach(d => B.hw.push({ id: d.id, ...d.data() }));
+    B.dec = []; dSnap.forEach(d => B.dec.push({ id: d.id, ...d.data() }));
+    B.hw.sort(byOrder); B.dec.sort(byOrder);
+    buildBrowseRows();
+    B.loaded = true; B.cacheAt = Date.now();
+    writeBrowseCache({ all: B.all, hw: B.hw, dec: B.dec, depts: DEPTS.list, matcats: MATCATS.byId });
+    renderBrowse();
+  } catch (err) {
+    wrap.innerHTML = '<div class="empty">Could not load the catalog.<br><span class="muted">' + esc(err.message) + '</span></div>';
+  } finally { B.loading = false; }
+}
+$('browseRefresh').onclick = () => loadBrowse(true);
+$('browseSearch').addEventListener('input', e => { B.search = e.target.value.trim().toLowerCase(); renderBrowse(); });
+$('browseShowInactive').addEventListener('change', renderBrowse);
+
+function renderBrowse() {
+  const showInactive = $('browseShowInactive').checked;
+  const base = showInactive ? B.rows : B.rows.filter(r => r.active);
+
+  const mats = base.filter(r => r.kind === 'material');
+  const hws  = base.filter(r => r.kind === 'hardware');
+  const decs = base.filter(r => r.kind === 'decoration');
+
+  const countBy = list => { const m = new Map(); list.forEach(r => m.set(r.cat, (m.get(r.cat) || 0) + 1)); return m; };
+  const matCounts = countBy(mats), hwCounts = countBy(hws), decCounts = countBy(decs);
+  const matCats = [...matCounts.keys()].sort((a, b) => matCounts.get(b) - matCounts.get(a));
+  const hwCats  = B.hw.map(t => t.id).filter(id => hwCounts.has(id));
+  const decCats = B.dec.map(t => t.id).filter(id => decCounts.has(id));
+
+  const pill = (id, label, n, group) =>
+    `<button class="cat-pill ${group ? 'group ' : ''}${B.activeCat === id ? 'active' : ''}" data-c="${esc(id)}">` +
+    `${esc(label)} <span class="cnt">${n.toLocaleString()}</span></button>`;
+  const groupPills = (cats, all, allId, allLabel, total, labelFor, prefix) =>
+    cats.length ? '<span class="pill-sep"></span>' + pill(allId, allLabel, total, true) +
+      cats.map(c => pill(prefix + c, labelFor(c), all.get(c))).join('') : '';
+
+  $('catPills').innerHTML =
+    pill('all', 'All', base.length, true) +
+    groupPills(matCats, matCounts, 'all-material', 'All Material', mats.length,
+               c => CATEGORY_SCHEMAS[c]?.label || c, 'mat:') +
+    groupPills(hwCats, hwCounts, 'all-hardware', 'All Hardware', hws.length,
+               c => B.hw.find(t => t.id === c)?.label || c, 'hw:') +
+    groupPills(decCats, decCounts, 'all-decoration', 'All Decoration', decs.length,
+               c => B.dec.find(t => t.id === c)?.label || c, 'dec:');
+  $('catPills').querySelectorAll('.cat-pill').forEach(b => b.onclick = () => { B.activeCat = b.dataset.c; renderBrowse(); });
+
+  const A = B.activeCat;
+  const matOnly = A === 'all-material', hwOnly = A === 'all-hardware', decOnly = A === 'all-decoration';
+  const oneMat  = A.startsWith('mat:') ? A.slice(4) : null;
+  const oneHw   = A.startsWith('hw:')  ? A.slice(3) : null;
+  const oneDec  = A.startsWith('dec:') ? A.slice(4) : null;
+  const oneDef  = oneHw || oneDec;
+
+  let rows = base;
+  if (matOnly) rows = mats;
+  else if (hwOnly) rows = hws;
+  else if (decOnly) rows = decs;
+  else if (oneMat) rows = mats.filter(r => r.cat === oneMat);
+  else if (oneDef) rows = base.filter(r => r.kind !== 'material' && r.cat === oneDef);
+
+  const q = B.search;
+  if (q) rows = rows.filter(r => r.search.includes(q));
+
+  rows = rows.slice().sort((a, b) =>
+    a.kind !== b.kind ? (a.kind === 'material' ? -1 : 1)
+    : (a.kind === 'material'
+        ? (a.key || '').localeCompare(b.key || '', undefined, { numeric: true })
+        : (a.catLabel + a.vals.join(' ')).localeCompare(b.catLabel + b.vals.join(' '), undefined, { numeric: true })));
+
+  $('browseCount').innerHTML = `Showing <b>${rows.length.toLocaleString()}</b> of <b>${base.length.toLocaleString()}</b>` +
+    (showInactive ? ' (including inactive)' : '') + (q ? ` matching &ldquo;${esc(B.search)}&rdquo;` : '') +
+    (B.cacheAt ? ` &nbsp;·&nbsp; <span class="muted">snapshot ${esc(cacheAgo(B.cacheAt))} — Refresh re-reads Firestore</span>` : '');
+
+  const hl = s => {
+    s = esc(s || '');
+    if (!q) return s || '<span class="muted">—</span>';
+    const i = s.toLowerCase().indexOf(q);
+    return i === -1 ? (s || '<span class="muted">—</span>')
+      : s.slice(0, i) + '<span class="hl">' + s.slice(i, i + q.length) + '</span>' + s.slice(i + q.length);
+  };
+  const statusCell = r => `<td>${r.active
+    ? '<span class="pill-s pill-new">active</span>'
+    : '<span class="pill-s pill-warn2">inactive</span>'}</td>`;
+  const deptCell = r => `<td>${(r.departments || []).length
+    ? r.departments.map(d => `<span class="pill-s pill-warn2">${esc(deptLabel(d))}</span>`).join(' ')
+    : '<span class="muted">—</span>'}</td>`;
+  const basisCell = r => `<td>${r.basis === 'confirmed'
+    ? '<span class="pill-s pill-new">confirmed</span>'
+    : r.basis === 'implied'
+      ? '<span class="pill-s pill-warn2" title="Cross product of independent option lists — not a checked list of real combinations">implied</span>'
+      : '<span class="pill-s pill-info">free text</span>'}</td>`;
+
+  if (!rows.length) {
+    $('browseTblWrap').innerHTML = '<div class="empty">Nothing matches.</div>';
+    return;
+  }
+  const t = el('table');
+  const MAX = 2000;
+  const tb = el('tbody');
+  const head = h => '<thead><tr>' + h.map(x => `<th>${x}</th>`).join('') + '</tr></thead>';
+
+  if (oneMat) {
+    const sch = CATEGORY_SCHEMAS[oneMat];
+    t.innerHTML = head([...sch.fields.map(f => esc(f.label)), 'Status']);
+    rows.slice(0, MAX).forEach(r => {
+      const tr = el('tr', r.active ? '' : 'inactive-row');
+      tr.innerHTML = sch.fields.map(f =>
+        `<td${f.id === sch.keyFields[sch.keyFields.length - 1] ? ' class="mono"' : ''}>${hl(r.doc[f.id])}</td>`).join('') + statusCell(r);
+      tb.append(tr);
+    });
+  } else if (oneDef) {
+    const type = (oneHw ? B.hw : B.dec).find(x => x.id === oneDef);
+    t.innerHTML = head([...(type.fields || []).map(f => esc(f.label || f.id)), 'Basis', 'Status']);
+    rows.slice(0, MAX).forEach(r => {
+      const tr = el('tr', r.active ? '' : 'inactive-row');
+      tr.innerHTML = r.vals.map(v => `<td>${hl(v)}</td>`).join('') + basisCell(r) + statusCell(r);
+      tb.append(tr);
+    });
+  } else if (hwOnly || decOnly) {
+    t.innerHTML = head(['Type', 'Combination', 'Dept', 'Basis', 'Status']);
+    rows.slice(0, MAX).forEach(r => {
+      const tr = el('tr', r.active ? '' : 'inactive-row');
+      tr.innerHTML =
+        `<td><span class="pill-s pill-info">${esc(r.catLabel)}</span>` +
+        (r.isBinding ? ' <span class="pill-s pill-new" title="Also a binding method">binding</span>' : '') + '</td>' +
+        `<td>${hl(r.vals.filter(Boolean).join(' · ')) || '<span class="muted">any</span>'}</td>` +
+        deptCell(r) + basisCell(r) + statusCell(r);
+      tb.append(tr);
+    });
+  } else if (matOnly) {
+    t.innerHTML = head(['Category', 'Key', 'Details', 'Dept', 'Status']);
+    rows.slice(0, MAX).forEach(r => {
+      const tr = el('tr', r.active ? '' : 'inactive-row');
+      tr.innerHTML =
+        `<td><span class="pill-s pill-info">${esc(r.catLabel)}</span></td>` +
+        `<td class="mono">${hl(r.key)}</td>` +
+        `<td>${r.details.map(esc).join(' &nbsp;·&nbsp; ') || '<span class="muted">—</span>'}</td>` +
+        deptCell(r) + statusCell(r);
+      tb.append(tr);
+    });
+  } else {
+    // Everything at once — materials and hardware side by side.
+    t.innerHTML = head(['Kind', 'Category', 'Item', 'Dept', 'Status']);
+    rows.slice(0, MAX).forEach(r => {
+      const tr = el('tr', r.active ? '' : 'inactive-row');
+      const item = r.kind === 'material'
+        ? `<b class="mono">${hl(r.key)}</b>` + (r.details.length ? ' &nbsp;' + r.details.map(esc).join(' &nbsp;·&nbsp; ') : '')
+        : (hl(r.vals.filter(Boolean).join(' · ')) || '<span class="muted">any</span>');
+      tr.innerHTML =
+        `<td><span class="pill-s ${r.kind === 'material' ? 'pill-info' : r.kind === 'hardware' ? 'pill-new' : 'pill-warn2'}">${r.kind}</span></td>` +
+        `<td>${esc(r.catLabel)}${r.isBinding ? ' <span class="pill-s pill-new">binding</span>' : ''}</td>` +
+        `<td>${item}</td>` + deptCell(r) + statusCell(r);
+      tb.append(tr);
+    });
+  }
+  t.append(tb);
+
+  $('browseTblWrap').innerHTML = '';
+  $('browseTblWrap').append(t);
+  if (rows.length > MAX) $('browseTblWrap').append(el('div', 'empty', `Showing first ${MAX.toLocaleString()} of ${rows.length.toLocaleString()}. Narrow the search or category to see the rest.`));
 }
 
 /* ============================================================
@@ -1456,6 +1864,808 @@ $('cfgClear').onclick = () => {
   S.db = null; S.fb = null; setCfgStatus(false, 'not configured'); $('cfgMsg').textContent = 'Cleared.';
 };
 
+/* ============================================================
+   HARDWARE DEFINITIONS EDITOR
+   ------------------------------------------------------------
+   Firestore is the source of truth once seeded. HW_SEED below is a
+   one-time bootstrap only — the same 14 types documented in
+   hardware-config.js, inlined because ES-module imports of a local
+   file are blocked over file:// (unlike <link rel=stylesheet>).
+   If the two ever disagree, Firestore wins; hardware-config.js is
+   the extraction record of where each definition came from.
+   ============================================================ */
+const HW_SEED = [
+  { id:'magnets', label:'Magnets', qtyLabel:'Qty', source:'BLC planner',
+    note:'shared.js splits this into Color/Style + Size; planner keeps one Description holding the part number.',
+    fields:[{ id:'desc', label:'Description', options:['BX081-N52 — 1/2" × 1" | 1/16" thick','D62-N52 — 3/8" round | 1/8" thick'] }] },
+  { id:'elastic-cords', isBinding:true, label:'Elastic Cords / Menu Cord', qtyLabel:'Qty', source:'BLC planner + MCS',
+    note:'MENU CORD RESOLVED: MCS\'s Menu Cord and BLC\'s Elastic Cords are the same product. Proof: the colours match, the styles match, and BLC\'s 11 flat lengths are exactly the union of the 23 real combinations below. BLC\'s config is this grid with the conditionality flattened out. Only 7 of the 12 colour/style pairs exist - there is no White Gold Barb, no Gold Silver Ball - so the flat list implied 132 options where 23 are real.',
+    mode:'combos',
+    fields:[
+      { id:'color',  label:'Color',  options:[] },
+      { id:'style',  label:'Style',  options:[] },
+      { id:'length', label:'Length', options:[] }],
+    combos:[
+      { color:'Black', style:'Silver Barb', length:'5.5\"' },
+      { color:'Black', style:'Silver Barb', length:'6\"' },
+      { color:'Black', style:'Silver Barb', length:'6.5\"' },
+      { color:'Black', style:'Silver Barb', length:'8\"' },
+      { color:'Black', style:'Silver Barb', length:'8.5\"' },
+      { color:'Black', style:'Silver Barb', length:'10\"' },
+      { color:'Black', style:'Silver Barb', length:'11\"' },
+      { color:'Black', style:'Gold Barb', length:'5\"' },
+      { color:'Black', style:'Gold Barb', length:'5.5\"' },
+      { color:'Black', style:'Gold Barb', length:'8\"' },
+      { color:'Black', style:'Gold Barb', length:'10\"' },
+      { color:'Black', style:'Silver Ball', length:'8\"' },
+      { color:'Black', style:'Silver Ball', length:'9\"' },
+      { color:'Black', style:'Silver Ball', length:'10\"' },
+      { color:'Black', style:'Gold Ball', length:'8\"' },
+      { color:'Black', style:'Gold Ball', length:'10\"' },
+      { color:'Gold', style:'Gold Ball', length:'6\"' },
+      { color:'Gold', style:'Gold Ball', length:'6.5\"' },
+      { color:'Gold', style:'Gold Ball', length:'7.5\"' },
+      { color:'Gold', style:'Gold Ball', length:'8.5\"' },
+      { color:'Gold', style:'Gold Barb', length:'8\"' },
+      { color:'White', style:'Silver Ball', length:'9\"' },
+      { color:'White', style:'Silver Ball', length:'9.5\"' },
+    ] },
+  { id:'eyelets', label:'Eyelets', qtyLabel:'Qty', source:'BLC planner',
+    note:'MCS bundles eyelets under "Menu Cord" as a sub-field. Kept as their own line item here — they are ordered and pulled separately.',
+    fields:[
+      { id:'size',  label:'Size',  options:['3/16"','1/4"'] },
+      { id:'color', label:'Color', options:['Brass','Nickel','Black','Copper'] }] },
+  { id:'o-rings', label:'O-Rings', qtyLabel:'Qty', source:'BLC planner',
+    note:'Free text in both tools — no option list exists anywhere. Candidate for Dave/Tim to enumerate.',
+    fields:[{ id:'desc', label:'Description', options:[] }] },
+  { id:'ring-binder', isBinding:true, label:'Ring Binder', qtyLabel:'Qty', source:'BLC planner',
+    note:'shared.js exposes separate "# of Rings" and "Color"; planner folds both into the model string. Model wins.',
+    fields:[{ id:'model', label:'Model', options:['2-ring — 0916-3102','3-ring — 15mm short — STR212-3-13','3-ring — 15mm long — STR277-3-13','3-ring — 1/2" short — IM85N','3-ring — 1/2" long — 0905-7101','3-ring — 3/4" short — IN87N','3-ring — 3/4" long — 0975-7101'] }] },
+  { id:'bands', isBinding:true, label:'Bands', qtyLabel:'Qty', source:'BLC planner', note:'',
+    fields:[
+      { id:'color', label:'Color', options:['Black','Blue','Red','Orange','White'] },
+      { id:'size',  label:'Size',  options:['106','35A','74'] }] },
+  { id:'clips', isBinding:true, label:'Clips', qtyLabel:'Qty', source:'BLC planner', note:'',
+    fields:[{ id:'color', label:'Color', options:['Black','Antique Brass','Nickel'] }] },
+  { id:'rowmark', label:'Rowmark', qtyLabel:'Sheet Qty', source:'BLC planner',
+    note:'ID corrected from "romark" (typo in both BLC configs). Counted in sheets, not each. Engraving/laser-cut on Rowmark raises the woodshop flag, so this line feeds tier escalation. No option lists exist yet.',
+    fields:[
+      { id:'size',      label:'Size',      options:[] },
+      { id:'color',     label:'Color',     options:[] },
+      { id:'thickness', label:'Thickness', options:[] }] },
+  { id:'rivets', label:'Rivets', qtyLabel:'Qty', source:'BLC planner',
+    note:'shared.js has qty only, no description field at all.',
+    fields:[{ id:'desc', label:'Description', options:[] }] },
+  { id:'plastic-sleeves', label:'Plastic Sleeves', qtyLabel:'Qty', source:'BLC planner', note:'',
+    fields:[{ id:'type', label:'Type / Size', options:['3-Hole 8.5×11 Stock','3-Hole 8.5×14','Spiral','Custom'] }] },
+  { id:'snaps', label:'Snaps', qtyLabel:'Qty', source:'BLC planner', note:'',
+    fields:[
+      { id:'line', label:'Line', options:['20','24'] },
+      { id:'type', label:'Type / Finish', options:['Black (9mm)','Shiny Brass Plate','Gun Metal Matte','Shiny Nickel Plate','Antique Brass Plate','Antique Nickel Plate','Antique Copper Plate','Themed'] }] },
+  { id:'screw-posts', isBinding:true, label:'Screw Posts', qtyLabel:'Qty', source:'BLC planner + MCS',
+    note:'The only place MCS beat BLC — it carries "Distance Apart" and an "Application" field with a MECH toggle that swaps to an interior-material picker. Both pulled in; the MECH conditional is UI behaviour to reimplement, not data.',
+    fields:[
+      { id:'color', label:'Color', options:['Aluminum','Antique Brass','Bronze','Black'] },
+      { id:'size',  label:'Size',  options:['1/8"','3/16"','1/4"','3/8"','1/2"','5/8"'] },
+      { id:'distanceApart', label:'Distance Apart', options:[] },
+      { id:'application',   label:'Application',    options:[] }] },
+  { id:'custom-hardware', isBinding:true, label:'Custom Hardware', qtyLabel:'Qty', source:'BLC planner',
+    note:'The free-text escape hatch. Job-local by definition — never enters a shared hardware catalog.',
+    fields:[{ id:'desc', label:'Description', options:[] }] },
+];
+
+/* Decoration definitions, lifted from MCS's DECOR object (index.html).
+   MCS encodes each decoration's inputs as terse control descriptors —
+   k:'f' is a text field, k:'newex' a new/existing die-job pair, k:'msd' a
+   single-select, k:'ta' a textarea. Those are unpacked into plain fields
+   here. Where MCS bundled two things into one control (Blind|Foil plus a
+   conditional Foil Color) they are split, because the picker needs them
+   separately. */
+const DECOR_SEED = [
+  { id:'deboss', label:'Deboss', qtyLabel:'Qty', source:'MCS', departments:['deboss'],
+    note:'MCS pairs a Blind/Foil toggle with a conditional Foil Color box, and asks whether the die is new or from an existing job. Die Type is the only closed list MCS actually carries for decoration.',
+    fields:[
+      { id:'location',  label:'Location',    options:[] },
+      { id:'method',    label:'Method',      options:['Blind','Foil'] },
+      { id:'foilColor', label:'Foil Color',  options:[] },
+      { id:'dieType',   label:'Die Type',    options:['Brass','Magnesium','River City'] },
+      { id:'dieSource', label:'Die',         options:['New','Existing'] },
+      { id:'dieJob',    label:'Existing Job #', options:[] }] },
+  { id:'emboss', label:'Emboss', qtyLabel:'Qty', source:'MCS', departments:[],
+    note:'MCS carries only Location plus the new/existing die pair — no die type list, unlike deboss. Worth asking whether that is real or just never filled in.',
+    fields:[
+      { id:'location',  label:'Location',    options:[] },
+      { id:'dieSource', label:'Die',         options:['New','Existing'] },
+      { id:'dieJob',    label:'Existing Job #', options:[] }] },
+  { id:'diecut', label:'Diecut Window', qtyLabel:'Qty', source:'MCS',
+    note:'Tip-In is what tells Metal Shop which tier applies \u2014 tip-in only escalates to 2, full metal work to 3. It is the single compound rule in the whole escalation set, which is why this field matters more than it looks.',
+    fields:[
+      { id:'location',  label:'Location',    options:[] },
+      { id:'size',      label:'Size',        options:[] },
+      { id:'dieSource', label:'Die',         options:['New','Existing'] },
+      { id:'dieJob',    label:'Existing Job #', options:[] },
+      { id:'tipIn',     label:'Tip-In',      options:['Yes','No'] }] },
+  { id:'laser', label:'Laser-Cut / Engrave', qtyLabel:'Qty', source:'MCS', departments:['woodshop'],
+    note:'Flags the woodshop department (locked decision 16), which escalates to Tier 3. Underlay is a material reference in MCS, not free text — it autocompletes against the interior material list, so it should become a catalog lookup rather than a typed string.',
+    fields:[
+      { id:'location', label:'Location', options:[] },
+      { id:'method',   label:'Method',   options:['Engrave','Laser-Cut'] },
+      { id:'underlay', label:'Underlay', options:[] }] },
+  { id:'colorprint', label:'Color Print', qtyLabel:'Qty', source:'MCS',
+    note:'A single free-text box in MCS. Almost certainly needs splitting — offset vs flatbed is a department-level distinction and cannot be read out of prose.',
+    fields:[{ id:'info', label:'Information', options:[] }] },
+  { id:'other', label:'Other', qtyLabel:'Qty', source:'MCS',
+    note:'Free-text escape hatch. Job-local by definition.',
+    fields:[{ id:'desc', label:'Description', options:[] }] },
+];
+
+/* The two definition collections share one editor. Everything below reads the
+   active set through H, so switching kind is a pointer swap, not a re-render
+   of different code. Dirty edits are held per kind, so moving between tabs
+   mid-edit never silently discards work. */
+/* Production departments. Lifted from BLC (shared.js deptNames + the escalate()
+   calls in determineTierFromState, and planner.html's toggle row).
+
+   Today these are toggled BY HAND in BLC's planner, which is exactly what the
+   merge removes: a department should be inferred from what the job is made of
+   and what is being done to it. That inference is the tags below — each
+   decoration and each material category names the departments it pulls in.
+
+   Every trigger in BLC today is single-condition, so a tag is enough; there is
+   no rule that needs two facts at once. The one exception is Metal Shop, which
+   escalates to 2 for a tip-in and 3 for full work — recorded in its note rather
+   than modelled, because nothing captures tip-in yet. */
+const DEPT_SEED = [
+  { id:'deboss',   label:'Deboss',        order:0, note:'The only department that does not move the tier on its own.' },
+  { id:'offset',   label:'Offset Print',  order:1, note:'' },
+  { id:'flatbed',  label:'Flatbed Print', order:2, note:'' },
+  { id:'sewing',   label:'Sewing',        order:3,
+    note:'Nothing in the current tools says what pulls sewing in \u2014 likely a construction choice rather than a material or decoration. Needs Dave or Tim.' },
+  { id:'woodshop', label:'Wood Shop',     order:4,
+    note:'Locked decision 16: laser-cut or engrave pulls in woodshop whatever the material \u2014 Rowmark, acrylic, rockboard or wood.' },
+  { id:'metal',    label:'Metal Shop',    order:5,
+    note:'Tiers differently depending on the Diecut Window Tip-In field \u2014 see the escalation section.' },
+];
+
+/* ============================================================
+   ESCALATION — one bucket per tier
+   ------------------------------------------------------------
+   Transcribed from BLC's determineTierFromState(), which takes the
+   HIGHEST tier any rule fires: rules raise, never lower.
+
+   Lead times are TIER_INFO in shared.js. Tier 4 has no day count in
+   BLC at all — it is the "stop and work it out" tier.
+
+   Rule types: qty | department | decoration | binding | condition.
+   `condition` is the escape hatch for rules BLC has but nothing in
+   the new data model can trigger yet — material availability and the
+   corners/tabs/pockets construction rules. They are carried here so
+   they are visible rather than quietly dropped; each needs a home
+   before the engine can evaluate it.
+   ============================================================ */
+const ESC_SEED = [
+  { id:'1', label:'Fast Track', leadDays:15, order:0, rules:[],
+    note:'The floor. Nothing escalates into tier 1 — a job lands here when no other rule fires.' },
+  { id:'2', label:'Standard', leadDays:25, order:1, rules:[
+      { type:'qty', op:'>', value:100 },
+      { type:'department', id:'offset' },
+      { type:'department', id:'sewing' },
+      { type:'department', id:'metal', qualifier:'tip-in only (Diecut Window → Tip-In = Yes)' },
+      { type:'condition', text:'Any material or hardware ordered, in stock at vendor',
+        gap:'Availability was a Coordinator field, and the Coordinator role is deprecated (decision 2). Needs a new home before this can fire.' },
+    ] },
+  { id:'3', label:'Complex', leadDays:40, order:2, rules:[
+      { type:'qty', op:'>', value:250 },
+      { type:'department', id:'flatbed' },
+      { type:'department', id:'woodshop' },
+      { type:'department', id:'metal', qualifier:'full metal work (Tip-In not set)' },
+      { type:'condition', text:'Corners: 5+ panels', gap:'Corners deferred to iteration 2.' },
+      { type:'condition', text:'Corners: non-standard', gap:'Corners deferred to iteration 2.' },
+      { type:'condition', text:'Tabs: 5+ panels', gap:'Tabs deferred to iteration 2.' },
+      { type:'condition', text:'Tabs: non-standard', gap:'Tabs deferred to iteration 2.' },
+      { type:'condition', text:'Pockets: non-standard', gap:'No pocket type field exists in the new model yet.' },
+    ] },
+  { id:'4', label:'TBD', leadDays:null, order:3, rules:[
+      { type:'qty', op:'>', value:1000 },
+      { type:'condition', text:'Any material or hardware ordered, NOT yet in stock',
+        gap:'Same deprecated-Coordinator problem as the tier 2 availability rule.' },
+    ], note:'BLC gives tier 4 no lead time — it means "someone has to work this out", not a longer number.' },
+];
+
+const ESC = { tiers: [], loaded: false, loading: false, dirty: new Set() };
+
+const DEPTS = { list: [], loaded: false, loading: false, dirty: new Set() };
+const deptLabel = id => DEPTS.list.find(d => d.id === id)?.label || id;
+
+/* Department tags on material categories live in their own collection. The
+   column schemas stay in code (they describe file shape, which is a developer
+   concern), but which departments a category pulls in is a business fact Dave
+   has to be able to change without a deploy. */
+const MATCATS = { byId: {}, loaded: false };
+
+const DEFS = {
+  hardware:    { collection:'hardware',    seed:HW_SEED,    noun:'hardware type',
+                 title:'Hardware definitions', binding:true,
+                 blurb:'The hardware types Creative can add to a job, and the suggested values for each.' },
+  decorations: { collection:'decorations', seed:DECOR_SEED, noun:'decoration',
+                 title:'Decoration definitions', binding:false,
+                 blurb:'The decorations Creative can specify, and the values each one takes. Pulled from MCS.' },
+};
+Object.values(DEFS).forEach(d => Object.assign(d, { types: [], sel: null, dirty: new Set(), loaded: false, loading: false }));
+let H = DEFS.hardware;
+
+
+const hwBlank = () => ({ label:'', qtyLabel:'Qty', source:'added in tool', note:'', active:true,
+                         fields:[{ id:'desc', label:'Description', options:[] }] });
+
+function hwSetStatus(html, cls) {
+  $('hwStatus').innerHTML = html ? `<div class="note ${cls || ''}">${html}</div>` : '';
+}
+
+function applyDefsCopy() {
+  $('defsTitle').textContent = H.title;
+  $('defsBlurb').textContent = H.blurb;
+  $('hwAdd').textContent = '+ Add ' + H.noun;
+}
+
+async function loadHardware(force) {
+  if (!S.db) {
+    $('hwList').innerHTML = '';
+    $('hwDetail').innerHTML = '<div class="empty">Not connected to Firestore yet.</div>';
+    hwSetStatus('Connect to Firebase from the Import tab before editing hardware.', 'warn');
+    return;
+  }
+  // Already cached — but the panes may still be showing the *other* kind, since
+  // both tabs share one set of DOM containers. Always repaint.
+  if (H.loaded && !force) { hwSetStatus(''); renderHwList(); renderHwDetail(); return; }
+  if (H.loading) return;
+  H.loading = true;
+  $('hwDetail').innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { collection, getDocs } = S.fb;
+    const snap = await getDocs(collection(S.db, H.collection));
+    H.types = [];
+    snap.forEach(d => H.types.push({ id: d.id, ...d.data() }));
+    H.types.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    // Field ids are the keys job data is stored under, so they must not drift when
+    // someone retitles a field. Lock every id that came back from Firestore; only
+    // freshly-added fields derive their id from the label as you type.
+    H.types.forEach(t => (t.fields || []).forEach(f => { f._idLocked = true; }));
+    // Pristine copy so Revert can restore one type without discarding edits to others.
+    H.pristine = new Map(H.types.map(t => [t.id, JSON.parse(JSON.stringify(t))]));
+    H.loaded = true; H.dirty.clear();
+    if (!H.types.length) {
+      hwSetStatus(`<b>No ${esc(H.noun)}s in Firestore yet.</b> The ${H.seed.length} pulled out of the existing tools are bundled with ` +
+        `this page — seeding writes them to the <code class="k">${esc(H.collection)}</code> collection, after which Firestore is ` +
+        'the source of truth. ' +
+        `<div class="actions"><button class="btn-primary" id="hwSeed">Seed ${H.seed.length} ${esc(H.noun)}s</button></div>`, 'warn');
+      $('hwSeed').onclick = seedHardware;
+      $('hwDetail').innerHTML = '<div class="empty">Nothing to edit until the collection is seeded.</div>';
+      renderHwList();
+    } else {
+      // Anyone who seeded before menu-cord was proven to be elastic cord still has
+      // both docs. Offer the merge rather than silently deleting one.
+      const mc = H.collection === 'hardware' && H.types.find(x => x.id === 'menu-cord' && x.active !== false);
+      if (mc && H.types.some(x => x.id === 'elastic-cords')) {
+        hwSetStatus('<b>Menu Cord duplicates Elastic Cords.</b> They are the same product — the colours and styles ' +
+          'match, and BLC&rsquo;s 11 flat lengths are exactly the union of the 23 real cord combinations. ' +
+          '<div class="actions"><button class="btn-primary" id="hwMergeCord">Deactivate Menu Cord</button></div>', 'warn');
+        $('hwMergeCord').onclick = async () => {
+          mc.active = false;
+          await saveHwType(mc);
+          hwSetStatus('<b>Menu Cord deactivated.</b> Elastic Cords / Menu Cord now carries the combinations.', 'ok');
+        };
+      } else hwSetStatus('');
+      H.sel = H.sel && H.types.some(t => t.id === H.sel) ? H.sel : H.types[0].id;
+      renderHwList(); renderHwDetail();
+    }
+  } catch (err) {
+    hwSetStatus('<b>Could not load hardware.</b> ' + esc(err.message), 'err');
+    $('hwDetail').innerHTML = '';
+  } finally { H.loading = false; }
+}
+
+async function seedHardware() {
+  const btn = $('hwSeed'); if (btn) { btn.disabled = true; btn.textContent = 'Seeding…'; }
+  try {
+    const { doc, writeBatch, serverTimestamp } = S.fb;
+    const batch = writeBatch(S.db);
+    H.seed.forEach((t, i) => {
+      const { id, ...rest } = t;
+      batch.set(doc(S.db, H.collection, id),
+        { ...rest, order: i, active: true, updatedAt: serverTimestamp() }, { merge: true });
+    });
+    await batch.commit();
+    H.loaded = false;
+    B.loaded = false; localStorage.removeItem(BROWSE_CACHE);   // Browse lists hardware too
+    await loadHardware(true);
+    hwSetStatus(`<b>Seeded.</b> ${H.seed.length} ${esc(H.noun)}s written. Firestore is now the source of truth — edits here overwrite it.`, 'ok');
+  } catch (err) {
+    hwSetStatus('<b>Seeding failed.</b> ' + esc(err.message) +
+      `<br><span class="muted">If this says "permission denied", the rules are blocking writes to <code class="k">${esc(H.collection)}</code>.</span>`, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry seeding'; }
+  }
+}
+
+function renderHwList() {
+  const wrap = $('hwList');
+  if (!H.types.length) { wrap.innerHTML = '<div class="empty" style="padding:var(--scale-500)">No types yet.</div>'; return; }
+  wrap.innerHTML = '';
+  H.types.forEach(t => {
+    const n = t.fields ? t.fields.length : 0;
+    const b = el('button', 'hw-item' + (t.id === H.sel ? ' sel' : '') +
+                            (t.active === false ? ' off' : '') + (H.dirty.has(t.id) ? ' dirty' : ''));
+    b.innerHTML = `<span class="nm">${esc(t.label || '(untitled)')}</span>` +
+                  (t.isBinding ? '<span class="pill-s pill-info" title="Also a binding method">bind</span>' : '') +
+                  `<span class="ct">${n} field${n === 1 ? '' : 's'}</span>`;
+    b.onclick = () => { H.sel = t.id; renderHwList(); renderHwDetail(); };
+    wrap.append(b);
+  });
+}
+
+function renderHwDetail() {
+  const t = H.types.find(x => x.id === H.sel);
+  const d = $('hwDetail');
+  if (!t) { d.innerHTML = '<div class="empty">Pick a hardware type on the left.</div>'; return; }
+  const isDirty = H.dirty.has(t.id);
+
+  d.innerHTML = `
+    <div class="hw-detail">
+      <h3>${esc(t.label || '(untitled)')} ${t.active === false ? '<span class="pill-s pill-warn2">inactive</span>' : ''}</h3>
+      <div class="row">
+        <div><label class="fld">Label</label><input type="text" id="hwLabel" value="${esc(t.label || '')}"></div>
+        <div><label class="fld">Quantity unit</label><input type="text" id="hwQty" value="${esc(t.qtyLabel || 'Qty')}"></div>
+        <div class="shrink"><label class="fld">Document id</label>
+          <div class="mono" style="padding:var(--scale-200) 0; color:var(--text-tertiary)">${esc(t.id)}</div></div>
+      </div>
+      ${H.binding ? `<div style="margin-top:var(--scale-400)">
+        <label style="display:flex; align-items:center; gap:8px; font-size:var(--fontsize-body-sm); cursor:pointer">
+          <input type="checkbox" id="hwIsBinding"${t.isBinding ? ' checked' : ''}>
+          <span>Also a <b>binding method</b> — appears in MCS's binding section, not just the hardware list</span>
+        </label>
+        <p class="hint" style="margin:var(--scale-100) 0 0 24px">Ring binders, screw posts, clips, bands and cord are ordered as
+          hardware but chosen as the way the book is held together, so they show up in both places off one definition.</p>
+      </div>` : ''}
+      <div style="margin-top:var(--scale-400)">
+        <label class="fld">Note — why this is the way it is, or what still needs deciding</label>
+        <textarea id="hwNote" style="min-height:70px; font-family:inherit; font-size:var(--fontsize-body-sm)">${esc(t.note || '')}</textarea>
+      </div>
+      <div style="margin-top:var(--scale-500)">
+        <label class="fld">How the options work</label>
+        <div class="mode-toggle" id="hwModeToggle">
+          <button data-mode="flat"${(t.mode || 'flat') === 'flat' ? ' class="on"' : ''}>Independent lists</button>
+          <button data-mode="combos"${t.mode === 'combos' ? ' class="on"' : ''}>Dependent combinations</button>
+        </div>
+        <p class="hint" style="margin:var(--scale-200) 0 var(--scale-400)">${
+          t.mode === 'combos'
+            ? 'Only the combinations listed below can be picked. Choosing a value narrows what\'s available in the next field.'
+            : 'Every field is independent — any value can pair with any other. Switch to dependent combinations when only certain pairings actually exist.'}</p>
+        <label class="fld">Fields</label>
+        <div id="hwFields"></div>
+        <button class="btn-ghost" id="hwAddField">+ Add field</button>
+        <div id="hwCombos"></div>
+      </div>
+      <div class="hw-bar">
+        <span class="hw-save-state ${isDirty ? 'dirty' : ''}" id="hwState">${
+          isDirty ? 'Unsaved changes' : 'Saved' }</span>
+        <span class="spacer"></span>
+        <button class="btn-ghost" id="hwRevert"${isDirty ? '' : ' disabled'}>Revert</button>
+        <button class="btn-ghost" id="hwDelete" style="color:var(--status-error-border)">Delete</button>
+        <button class="btn-danger" id="hwToggle">${t.active === false ? 'Reactivate' : 'Deactivate'}</button>
+        <button class="btn-primary" id="hwSave"${isDirty ? '' : ' disabled'}>Save changes</button>
+      </div>
+      <p class="hint" style="margin-top:var(--scale-300)">
+        ${t.source ? 'Pulled from <b>' + esc(t.source) + '</b>. ' : ''}<b>Deactivate</b> hides it from Creative but keeps it
+        resolving on jobs that already use it. <b>Delete</b> removes it outright — right when something was never meant to be
+        here at all, wrong when it is simply retired.</p>
+    </div>`;
+
+  renderHwFields(t);
+  renderHwCombos(t);
+
+  $('hwModeToggle').querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      const m = btn.dataset.mode;
+      if (m === (t.mode || 'flat')) return;
+      if (m === 'combos' && !(t.combos || []).length) t.combos = [];
+      t.mode = m; H.dirty.add(t.id); renderHwDetail();
+    };
+  });
+
+  const touch = () => { H.dirty.add(t.id); renderHwList();
+    $('hwState').textContent = 'Unsaved changes'; $('hwState').className = 'hw-save-state dirty';
+    $('hwSave').disabled = false; $('hwRevert').disabled = false; };
+
+  $('hwLabel').oninput = e => { t.label = e.target.value; touch(); };
+  const bind = $('hwIsBinding');
+  if (bind) bind.onchange = e => { t.isBinding = e.target.checked; touch(); renderHwList(); };
+  $('hwQty').oninput   = e => { t.qtyLabel = e.target.value; touch(); };
+  $('hwNote').oninput  = e => { t.note = e.target.value; touch(); };
+  $('hwAddField').onclick = () => {
+    t.fields = t.fields || [];
+    t.fields.push({ id: uniqueFieldId(t, 'field' + (t.fields.length + 1)), label: '', options: [] });
+    H.dirty.add(t.id); renderHwDetail();
+  };
+  $('hwSave').onclick   = () => saveHwType(t);
+  $('hwRevert').onclick = () => {
+    // Revert THIS type only — other types keep their unsaved edits.
+    const clean = H.pristine && H.pristine.get(t.id);
+    const i = H.types.findIndex(x => x.id === t.id);
+    if (clean) H.types[i] = JSON.parse(JSON.stringify(clean));
+    else H.types.splice(i, 1), H.sel = H.types[0] && H.types[0].id;   // never saved — drop it
+    H.dirty.delete(t.id);
+    renderHwList(); renderHwDetail();
+  };
+  $('hwDelete').onclick = async () => {
+    // Hard delete, unlike Deactivate. Correct for a definition that was wrong to
+    // begin with — Rowmark was seeded as hardware when it is really a sheet
+    // material — and wrong for one being retired, where existing jobs still need
+    // it to resolve. The confirm has to make that distinction, not just shout.
+    if (!confirm(
+      `Delete "${t.label}" permanently?\n\n` +
+      `This is not the same as deactivating. The definition is removed from Firestore, and any job that ` +
+      `already references it would be left pointing at nothing.\n\n` +
+      `Delete only if this was never a real ${H.noun} — otherwise cancel and use Deactivate.`)) return;
+    const btn = $('hwDelete'); btn.disabled = true; btn.textContent = 'Deleting…';
+    try {
+      const { doc, deleteDoc } = S.fb;
+      await deleteDoc(doc(S.db, H.collection, t.id));
+      H.types = H.types.filter(x => x.id !== t.id);
+      H.dirty.delete(t.id);
+      if (H.pristine) H.pristine.delete(t.id);
+      H.sel = H.types[0] && H.types[0].id;
+      B.loaded = false; ESC.loaded = false; DEPTS.loaded = false;
+      hwSetStatus(`<b>Deleted “${esc(t.label)}”.</b> Any escalation rule naming it is now orphaned — the Escalation tab flags those.`, 'ok');
+      renderHwList(); renderHwDetail();
+    } catch (err) {
+      hwSetStatus(`<b>Could not delete.</b> ${esc(err.message)}`, 'err');
+      btn.disabled = false; btn.textContent = 'Delete';
+    }
+  };
+
+  $('hwToggle').onclick = () => {
+    const turningOff = t.active !== false;
+    if (turningOff && !confirm(`Deactivate "${t.label}"?\n\nIt disappears from Creative's hardware picker. ` +
+        `Jobs already using it keep working — nothing is deleted, and you can reactivate it here.`)) return;
+    t.active = !turningOff;
+    H.dirty.add(t.id); renderHwList(); renderHwDetail();
+  };
+}
+
+function renderHwFields(t) {
+  const box = $('hwFields');
+  const combos = t.mode === 'combos';   // columns come from fields; values live in the grid
+  box.innerHTML = '';
+  (t.fields || []).forEach((f, i) => {
+    const div = el('div', 'hw-field');
+    div.innerHTML = `
+      <div class="hw-field-head">
+        <div><label class="fld">Field label</label><input type="text" class="hwf-label" value="${esc(f.label || '')}"></div>
+        <div class="shrink" style="display:flex; gap:4px; padding-bottom:2px">
+          <button class="iconbtn hwf-up"   title="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
+          <button class="iconbtn hwf-down" title="Move down"${i === t.fields.length - 1 ? ' disabled' : ''}>↓</button>
+          <button class="iconbtn hwf-del"  title="Remove field">✕</button>
+        </div>
+      </div>
+      ${combos ? '' :
+      `<div class="hw-opts-count">${(f.options || []).length} suggested value${(f.options || []).length === 1 ? '' : 's'} — one per line, blank for free text</div>
+      <textarea class="hwf-opts" style="min-height:${Math.min(200, 44 + (f.options || []).length * 20)}px">${esc((f.options || []).join('\n'))}</textarea>`}`;
+    box.append(div);
+
+    const touch = () => hwTouch(t);
+
+    div.querySelector('.hwf-label').oninput = e => {
+      const prevId = f.id;
+      f.label = e.target.value;
+      if (!f._idLocked) {
+        const base = slug(e.target.value).replace(/-./g, m => m[1].toUpperCase()) || 'field' + (i + 1);
+        f.id = uniqueFieldId(t, base, f);
+        // Rekey the grid so retitling an unsaved column doesn't strand its values.
+        if (combos && f.id !== prevId) (t.combos || []).forEach(r => {
+          r[f.id] = r[prevId]; delete r[prevId];
+        });
+      }
+      touch();
+      if (combos) renderHwCombos(t);
+    };
+    const optsBox = div.querySelector('.hwf-opts');
+    if (optsBox) optsBox.oninput = e => {
+      f.options = e.target.value.split('\n').map(x => x.trim()).filter(Boolean);
+      div.querySelector('.hw-opts-count').textContent =
+        `${f.options.length} suggested value${f.options.length === 1 ? '' : 's'} — one per line, blank for free text`;
+      touch();
+    };
+    div.querySelector('.hwf-up').onclick   = () => { t.fields.splice(i - 1, 0, t.fields.splice(i, 1)[0]); H.dirty.add(t.id); renderHwDetail(); };
+    div.querySelector('.hwf-down').onclick = () => { t.fields.splice(i + 1, 0, t.fields.splice(i, 1)[0]); H.dirty.add(t.id); renderHwDetail(); };
+    div.querySelector('.hwf-del').onclick  = () => {
+      if (!confirm(combos
+        ? `Remove the "${f.label || 'untitled'}" column from ${t.label}?\n\nIts values are dropped from all ${(t.combos || []).length} combinations.`
+        : `Remove the "${f.label || 'untitled'}" field from ${t.label}?`)) return;
+      if (combos) (t.combos || []).forEach(r => delete r[f.id]);
+      t.fields.splice(i, 1); H.dirty.add(t.id); renderHwDetail();
+    };
+  });
+  if (!(t.fields || []).length) box.innerHTML = '<div class="empty" style="padding:var(--scale-500)">No fields — quantity only.</div>';
+}
+
+/* ------------------------------------------------------------
+   Dependent combinations - the valid-tuple table.
+   A flat option list per field implies the full cross product.
+   Menu cord is the proof that's wrong: 3 colors x 4 styles x 11
+   lengths = 132 implied, but only 23 combinations are real and
+   only 7 of the 12 colour/style pairs exist at all. This table
+   stores the 23 rows instead, and the picker filters down them.
+   ------------------------------------------------------------ */
+
+/* Field ids are the keys every combination row is stored under. Two fields
+   sharing an id silently collapse into one column — the paste maps by index,
+   the later key wins, and the earlier column's data is gone with no error.
+   That is exactly how "barb" disappeared out of the cord grid. Derive ids
+   through here so a collision can never be created in the first place. */
+function uniqueFieldId(t, base, self) {
+  const taken = new Set((t.fields || []).filter(f => f !== self).map(f => f.id));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(base + n)) n++;
+  return base + n;
+}
+
+// Existing docs may already carry a collision from before the guard existed.
+function duplicateFieldIds(t) {
+  const seen = new Set(), dupes = new Set();
+  (t.fields || []).forEach(f => { if (seen.has(f.id)) dupes.add(f.id); else seen.add(f.id); });
+  return dupes;
+}
+
+// Mark a type dirty and refresh the save/revert affordances, from anywhere in
+// the editor. Detail pane may not be showing this type's controls yet.
+function hwTouch(t) {
+  H.dirty.add(t.id);
+  renderHwList();
+  const st = $('hwState'), sv = $('hwSave'), rv = $('hwRevert');
+  if (st) { st.textContent = 'Unsaved changes'; st.className = 'hw-save-state dirty'; }
+  if (sv) sv.disabled = false;
+  if (rv) rv.disabled = false;
+}
+
+// Rows that are incomplete or repeat an earlier row. Returned as index sets
+// so the grid can flag them without reordering anything under the cursor.
+function comboProblems(t) {
+  const cols = (t.fields || []).map(f => f.id);
+  const seen = new Map(), dupe = new Set(), blank = new Set();
+  (t.combos || []).forEach((row, i) => {
+    if (cols.some(c => !String(row[c] ?? '').trim())) { blank.add(i); return; }
+    const k = cols.map(c => String(row[c]).trim().toLowerCase()).join('');
+    if (seen.has(k)) dupe.add(i); else seen.set(k, i);
+  });
+  return { dupe, blank };
+}
+
+function renderHwCombos(t) {
+  const box = $('hwCombos');
+  if (t.mode !== 'combos') { box.innerHTML = ''; return; }
+  const cols = (t.fields || []);
+  if (!cols.length) {
+    box.innerHTML = '<div class="note warn">Add at least one field before listing combinations - the fields are the columns.</div>';
+    return;
+  }
+  const rows = t.combos || (t.combos = []);
+  const { dupe, blank } = comboProblems(t);
+
+  // A pre-existing id collision has to be fixed before anything else makes sense —
+  // two columns are showing the same data and one column's values are already lost.
+  const idDupes = duplicateFieldIds(t);
+  if (idDupes.size) {
+    box.innerHTML = `<div class="note err">
+      <b>Two columns share the same internal id (<code class="k">${[...idDupes].map(esc).join('</code>, <code class="k">')}</code>).</b><br>
+      Every row is stored under that one key, so those columns show identical values and
+      whichever was filled first has been overwritten. Renaming a column does not change its id,
+      so this happens when a new column ends up deriving the id an older one already had.
+      <div class="actions"><button class="btn-primary" id="fixIds">Give each column its own id</button></div>
+      <span class="muted">The repair renames the later column only. Its values are gone and will need re-entering
+      or re-pasting — the data was never stored separately.</span></div>`;
+    $('fixIds').onclick = () => {
+      const seen = new Set();
+      t.fields.forEach(f => {
+        if (seen.has(f.id)) { f._idLocked = false; f.id = uniqueFieldId(t, f.id, f); }
+        seen.add(f.id);
+      });
+      hwTouch(t); renderHwDetail();
+    };
+    return;
+  }
+
+  // Inch marks arrive as both " and ” depending on where the text was copied from,
+  // which splits one real value into two. Same idea as vendor normalization on the
+  // import side: surface it, let a human decide, never rewrite silently.
+  const smart = rows.reduce((n, r) => n + cols.filter(c => /[\u2018\u2019\u201C\u201D]/.test(String(r[c.id] ?? ''))).length, 0);
+
+  // Coverage: how much smaller the real list is than the implied cross product.
+  const distinct = cols.map(c => new Set(rows.map(r => String(r[c.id] ?? '').trim()).filter(Boolean)));
+  const cross = distinct.reduce((n, st) => n * (st.size || 1), 1);
+
+  box.innerHTML = `
+    <div class="combo-stats">
+      <div><b>${rows.length}</b> valid combination${rows.length === 1 ? '' : 's'}</div>
+      ${cols.map((c, i) => `<div><b>${distinct[i].size}</b> ${esc(c.label || c.id)}</div>`).join('')}
+      ${cross > rows.length ? `<div>a flat list would imply <b>${cross}</b></div>` : ''}
+      ${dupe.size ? `<div style="color:var(--status-error-border)"><b>${dupe.size}</b> duplicate</div>` : ''}
+      ${blank.size ? `<div style="color:var(--status-warning-border)"><b>${blank.size}</b> incomplete</div>` : ''}
+    </div>
+    <div class="tbl-scroll" style="max-height:340px">
+      <table class="combo-grid" id="comboTbl">
+        <thead><tr>${cols.map(c => `<th>${esc(c.label || c.id)}</th>`).join('')}<th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn-ghost" id="comboAdd">+ Add combination</button>
+      <button class="btn-ghost" id="comboPasteToggle">Paste from spreadsheet</button>
+      <span class="spacer"></span>
+      ${smart ? `<button class="btn-ghost" id="comboQuotes">Normalize ${smart} curly quote${smart === 1 ? '' : 's'}</button>` : ''}
+      <button class="btn-ghost" id="comboDedupe"${dupe.size ? '' : ' disabled'}>Remove ${dupe.size} duplicate${dupe.size === 1 ? '' : 's'}</button>
+    </div>
+    <div id="comboPaste" hidden>
+      <label class="fld">One combination per line - tab or comma separated, in column order (${cols.map(c => esc(c.label || c.id)).join(', ')})</label>
+      <textarea id="comboPasteTxt" placeholder="Black&#9;Silver Barb&#9;5.5&quot;"></textarea>
+      <div class="actions">
+        <button class="btn-primary" id="comboPasteGo">Add rows</button>
+        <button class="btn-ghost" id="comboPasteCancel">Cancel</button>
+      </div>
+    </div>
+    <div class="preview-box" id="comboPreview"></div>`;
+
+  const tb = $('comboTbl').querySelector('tbody');
+  rows.forEach((row, i) => {
+    const tr = el('tr', dupe.has(i) ? 'dupe' : (blank.has(i) ? 'blank' : ''));
+    tr.innerHTML = cols.map(c =>
+      `<td><input type="text" data-col="${esc(c.id)}" value="${esc(row[c.id] ?? '')}"></td>`).join('') +
+      '<td class="rm"><button class="iconbtn" title="Remove">✕</button></td>';
+    tb.append(tr);
+    tr.querySelectorAll('input').forEach(inp => {
+      inp.oninput = e => { row[e.target.dataset.col] = e.target.value; hwTouch(t); renderComboPreview(t); };
+      // Re-render on blur so duplicate/blank flags and the stats catch up without
+      // stealing the caret mid-keystroke.
+      inp.onblur = () => { const a = document.activeElement; if (!a || !a.closest('#comboTbl')) renderHwCombos(t); };
+    });
+    tr.querySelector('.iconbtn').onclick = () => { rows.splice(i, 1); hwTouch(t); renderHwCombos(t); };
+  });
+  if (!rows.length) tb.innerHTML = `<tr><td colspan="${cols.length + 1}"><div class="empty">No combinations yet - add them one at a time, or paste the grid in.</div></td></tr>`;
+
+  $('comboAdd').onclick = () => { rows.push(Object.fromEntries(cols.map(c => [c.id, '']))); hwTouch(t); renderHwCombos(t); };
+  $('comboDedupe').onclick = () => {
+    const problems = comboProblems(t);
+    t.combos = rows.filter((_, i) => !problems.dupe.has(i));
+    hwTouch(t); renderHwCombos(t);
+  };
+  const qbtn = $('comboQuotes');
+  if (qbtn) qbtn.onclick = () => {
+    rows.forEach(r => cols.forEach(c => {
+      if (r[c.id]) r[c.id] = String(r[c.id]).replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+    }));
+    hwTouch(t); renderHwCombos(t);
+  };
+  $('comboPasteToggle').onclick = () => {
+    $('comboPaste').hidden = !$('comboPaste').hidden;
+    if (!$('comboPaste').hidden) $('comboPasteTxt').focus();
+  };
+  $('comboPasteCancel').onclick = () => { $('comboPaste').hidden = true; $('comboPasteTxt').value = ''; };
+  $('comboPasteGo').onclick = () => {
+    const lines = $('comboPasteTxt').value.split('\n').map(x => x.trim()).filter(Boolean);
+    let added = 0, short = 0;
+    lines.forEach(line => {
+      const cells = (line.includes('\t') ? line.split('\t') : (parseCSV(line)[0] || [])).map(x => x.trim());
+      if (cells.length < cols.length) { short++; return; }
+      rows.push(Object.fromEntries(cols.map((c, i) => [c.id, cells[i] ?? ''])));
+      added++;
+    });
+    $('comboPasteTxt').value = '';
+    $('comboPaste').hidden = true;
+    hwTouch(t); renderHwCombos(t);
+    if (short) hwSetStatus(`<b>Added ${added} row${added === 1 ? '' : 's'}.</b> ${short} line${short === 1 ? '' : 's'} skipped - fewer than ${cols.length} columns.`, 'warn');
+  };
+
+  renderComboPreview(t);
+}
+
+/* What Creative actually sees. Each field only offers values that still have a
+   valid row behind them, so an impossible pairing can't be selected at all
+   (error prevention beats validating after the fact). */
+const CPREV = {};
+function renderComboPreview(t) {
+  const host = $('comboPreview'); if (!host) return;
+  const cols = t.fields || [];
+  const rows = (t.combos || []).filter(r => cols.every(c => String(r[c.id] ?? '').trim()));
+  const sel = CPREV[t.id] || (CPREV[t.id] = {});
+
+  // Drop selections that no longer resolve, left to right.
+  let live = rows;
+  cols.forEach(c => {
+    const opts = [...new Set(live.map(r => r[c.id]))];
+    if (sel[c.id] && !opts.includes(sel[c.id])) delete sel[c.id];
+    if (sel[c.id]) live = live.filter(r => r[c.id] === sel[c.id]);
+  });
+
+  let running = rows;
+  const controls = cols.map(c => {
+    const opts = [...new Set(running.map(r => r[c.id]))].sort();
+    const chosen = sel[c.id] || '';
+    if (chosen) running = running.filter(r => r[c.id] === chosen);
+    return `<div><label class="fld">${esc(c.label || c.id)}</label>
+      <select data-col="${esc(c.id)}"${opts.length ? '' : ' disabled'}>
+        <option value="">${opts.length ? '- any -' : '- none available -'}</option>
+        ${opts.map(o => `<option${o === chosen ? ' selected' : ''}>${esc(o)}</option>`).join('')}
+      </select></div>`;
+  }).join('');
+
+  const done = cols.length && cols.every(c => sel[c.id]);
+  host.innerHTML = `<div class="ttl">Preview - what Creative sees</div>
+    <div class="preview-row">${controls}</div>
+    <div class="preview-out">${
+      !rows.length ? 'Nothing to preview until there are complete combinations.'
+      : done ? `Resolves to <b>${cols.map(c => esc(sel[c.id])).join(' · ')}</b>`
+      : `<b>${running.length}</b> of <b>${rows.length}</b> combination${rows.length === 1 ? '' : 's'} still match.`}
+      ${rows.length ? ' <button class="btn-ghost" id="cprevReset">Reset</button>' : ''}</div>`;
+
+  host.querySelectorAll('select').forEach(s2 => {
+    s2.onchange = e => {
+      const col = e.target.dataset.col;
+      if (e.target.value) sel[col] = e.target.value; else delete sel[col];
+      // Clear everything downstream - a changed parent invalidates its children.
+      const i = cols.findIndex(c => c.id === col);
+      cols.slice(i + 1).forEach(c => delete sel[c.id]);
+      renderComboPreview(t);
+    };
+  });
+  const rst = $('cprevReset'); if (rst) rst.onclick = () => { CPREV[t.id] = {}; renderComboPreview(t); };
+}
+
+async function saveHwType(t) {
+  const btn = $('hwSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const { doc, setDoc, serverTimestamp } = S.fb;
+    const { id, ...rest } = t;
+    rest.fields = (rest.fields || []).map(f => ({ id: f.id, label: f.label, options: f.options || [] }));
+    rest.mode = t.mode || 'flat';
+    rest.isBinding = !!t.isBinding;
+    // Only persist complete rows — a half-typed row is editor state, not data.
+    rest.combos = rest.mode === 'combos'
+      ? (t.combos || []).filter(r => rest.fields.every(f => String(r[f.id] ?? '').trim()))
+                        .map(r => Object.fromEntries(rest.fields.map(f => [f.id, String(r[f.id]).trim()])))
+      : [];
+    rest.order = H.types.findIndex(x => x.id === id);
+    await setDoc(doc(S.db, H.collection, id), { ...rest, updatedAt: serverTimestamp() }, { merge: true });
+    (t.fields || []).forEach(f => { f._idLocked = true; });   // now persisted — id is load-bearing
+    B.loaded = false; localStorage.removeItem(BROWSE_CACHE);   // snapshot is stale now
+    if (H.pristine) H.pristine.set(id, JSON.parse(JSON.stringify(t)));
+    H.dirty.delete(id);
+    renderHwList();
+    $('hwState').textContent = 'Saved'; $('hwState').className = 'hw-save-state ok';
+    btn.textContent = 'Save changes';
+    $('hwRevert').disabled = true;
+  } catch (err) {
+    hwSetStatus('<b>Could not save.</b> ' + esc(err.message), 'err');
+    btn.disabled = false; btn.textContent = 'Retry save';
+  }
+}
+
+$('hwAdd').onclick = () => {
+  const label = (prompt('Name the new ' + H.noun + ':') || '').trim();
+  if (!label) return;
+  const id = slug(label);
+  if (!id) return hwSetStatus('That name has no letters or numbers in it — pick another.', 'err');
+  if (H.types.some(x => x.id === id))
+    return hwSetStatus(`<b>"${esc(label)}" already exists.</b> Pick a different name, or edit the existing one.`, 'err');
+  hwSetStatus('');
+  H.types.push({ id, ...hwBlank(), label });
+  H.sel = id; H.dirty.add(id);
+  renderHwList(); renderHwDetail();
+};
+$('hwRefresh').onclick = async () => {
+  if (H.dirty.size && !confirm(`${H.dirty.size} ${H.noun}(s) have unsaved changes. Reload and lose them?`)) return;
+  H.loaded = false; H.dirty.clear(); await loadHardware(true);
+};
+
 (async function init() {
   const saved = localStorage.getItem(CFG_KEY);
   try {
@@ -1463,9 +2673,13 @@ $('cfgClear').onclick = () => {
     $('cfgText').value = JSON.stringify(cfg, null, 2);
     await connect(cfg);
     setCfgStatus(true, cfg.projectId);
+    loadBrowse(); // Browse is the landing view, so populate it immediately
   } catch (err) {
     setCfgStatus(false, 'could not reach Firebase');
     $('cfgMsg').textContent = 'Could not load the Firebase SDK — check your connection, then reopen this page. (' + err.message + ')';
+    // The config box lives inside Import, which is hidden by default — surface it,
+    // otherwise Browse just sits on "Connecting…" with no way to fix the problem.
+    setMode('import'); goto(4);
     $('cfgBox').open = true;
   }
 })();
