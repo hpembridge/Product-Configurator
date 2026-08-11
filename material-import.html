@@ -205,6 +205,13 @@
   }
   .modenav button.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
 
+  .exportbar { display: flex; align-items: center; gap: var(--scale-300); flex-wrap: wrap;
+    border: 1px solid var(--border-tertiary); border-radius: var(--border-radius-md);
+    background: var(--bg-surface); padding: var(--scale-300) var(--scale-400);
+    margin: var(--scale-400) 0; font-size: var(--fontsize-body-sm); }
+  .exportbar.dirty { border-color: var(--status-warning-border); background: var(--status-warning-bg); }
+  .exportbar .spacer { flex: 1; }
+
   /* ---- browse catalog ---- */
   .browse-toolbar { display: flex; gap: var(--scale-300); flex-wrap: wrap; align-items: center; margin-bottom: var(--scale-400); }
   .browse-toolbar .search { flex: 1 1 260px; position: relative; }
@@ -320,7 +327,7 @@
 
   <header class="app">
     <h1>Reference Data</h1>
-    <span class="sub">for use with the Menu Construction Sheet and Bindery Leadtime Calculator</span>
+    <span class="sub">edits <code class="k">data/catalog.js</code> — the versioned catalog the configurator reads</span>
   </header>
 
   <div class="modenav" id="modenav">
@@ -331,6 +338,18 @@
     <button data-m="departments">Departments</button>
     <button data-m="escalation">Escalation</button>
   </div>
+
+  <!-- Pending-change bar. Firestore writes were durable the instant they
+       committed; these are not — everything is staged until catalog.js is
+       exported and committed. So this is deliberately persistent across every
+       mode rather than tucked into one screen. -->
+  <div class="exportbar" id="exportBar">
+    <span id="exportState" class="muted">Loading catalog…</span>
+    <span class="spacer"></span>
+    <button class="btn-ghost" id="discardDraft" hidden>Discard staged changes</button>
+    <button class="btn-primary" id="exportCatalog" disabled>Export catalog.js</button>
+  </div>
+  <div id="exportDetail"></div>
 
   <!-- ============ HARDWARE MODE ============ -->
   <section id="hwMode" hidden>
@@ -502,6 +521,27 @@
 
 <script type="module">
 /* ============================================================
+   THE CATALOG IS NOW A FILE, NOT A DATABASE.
+
+   This tool used to read and write Firestore directly. It now reads
+   data/catalog.js and writes to an in-memory store, which serialises back
+   out to that same file. Firestore is no longer touched from this page.
+
+   The conversion is deliberately small: everything below still speaks the
+   Firestore modular API (collection / getDocs / writeBatch / setDoc /
+   deleteDoc), because catalog-store.js provides a facade with that shape.
+   Only the seam changed — connect() now builds a store instead of opening
+   a connection. The diff engine, the vendor matching, the schemas and every
+   editor are untouched.
+
+   THE ONE THING THAT IS GENUINELY DIFFERENT: writes are STAGED, not saved.
+   Nothing survives until catalog.js is exported and committed to git.
+   ============================================================ */
+import { CATALOG } from './data/catalog.js';
+import { createStore } from './engines/catalog-store.js';
+
+let STORE = null;
+/* ============================================================
    CATEGORY SCHEMAS
    Every category gets its own columns. Two invariants hold for all of them:
      - keyFields: the field id(s) that together must be unique per row. This is
@@ -629,7 +669,11 @@ const BROWSE_CACHE = 'plpc_browsecache';
 /* Browse pulls the whole catalog — ~1,100 material docs, one Firestore read
    each. Cached so repeated page loads cost nothing; Refresh forces a real
    fetch, and every write in this tool invalidates it. */
-const readBrowseCache = () => { try { return JSON.parse(localStorage.getItem(BROWSE_CACHE)); } catch { return null; } };
+/* Retired. The cache existed to avoid ~1,100 Firestore reads per page load;
+   reads are now in-memory and free. Worse, a cache hit would serve the catalog
+   as it was BEFORE a staged edit, so Browse would contradict the editor.
+   Always null — every read goes to the store. */
+const readBrowseCache = () => null;
 const writeBrowseCache = o => { try { localStorage.setItem(BROWSE_CACHE, JSON.stringify({ ...o, at: Date.now() })); } catch {} };
 const cacheAgo = ts => { const m = Math.round((Date.now() - ts) / 60000);
   return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
@@ -1826,38 +1870,30 @@ function renderBrowse() {
 /* ============================================================
    FIREBASE
    ============================================================ */
-async function connect(cfg) {
-  const [{ initializeApp }, fs] = await Promise.all([
-    import('https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js'),
-  ]);
-  const app = initializeApp(cfg, 'plpc-' + Date.now());
-  S.fb = fs; S.db = fs.getFirestore(app);
-  return fs;
+/* Was: open a Firebase app and hand back its Firestore handle.
+   Now: build the catalog store and hand back its Firestore-shaped facade.
+   Same shape out, so every call site below is unchanged. No network. */
+async function connect() {
+  STORE = createStore(CATALOG, { onChange: renderExportBar });
+  S.fb = STORE.fb; S.db = STORE.db;
+  const draft = STORE.loadDraft();
+  renderExportBar();
+  return { draft };
 }
 function setCfgStatus(ok, label) {
   $('cfgDot').className = 'dot ' + (ok ? 'on' : 'off');
   $('cfgLabel').textContent = label;
 }
+/* The Firebase config box is inert now — this page does not open a connection.
+   Left in place rather than ripped out because export-catalog.html still needs
+   these credentials, and deleting the only UI that shows them would make that
+   harder to fix later. */
 $('cfgSave').onclick = async () => {
-  const msg = $('cfgMsg');
-  let cfg;
-  try {
-    let t = $('cfgText').value.trim().replace(/^(const|let|var)\s+\w+\s*=\s*/, '').replace(/;+\s*$/, '');
-    cfg = JSON.parse(t.startsWith('{') && !/"\s*:/.test(t) ? t.replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":').replace(/'/g, '"') : t);
-  } catch {
-    msg.textContent = 'That isn’t valid JSON — paste the whole { … } object from the console.'; return;
-  }
-  if (!cfg.projectId) { msg.textContent = 'Missing projectId.'; return; }
-  msg.textContent = 'Connecting…';
-  try {
-    await connect(cfg);
-    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-    setCfgStatus(true, cfg.projectId);
-    msg.textContent = 'Connected.';
-    $('cfgBox').open = false;
-    if (S.parsed) { await prepareDiff(); renderApply(); }
-  } catch (err) { msg.textContent = 'Could not connect: ' + err.message; }
+  $('cfgMsg').innerHTML = 'This page no longer connects to Firestore — it reads and writes ' +
+    '<code class="k">data/catalog.js</code>. These credentials are still used by ' +
+    '<b>export-catalog.html</b>, so they are saved but not dialled.';
+  try { localStorage.setItem(CFG_KEY, $('cfgText').value.trim()); } catch {}
+  return;
 };
 $('cfgClear').onclick = () => {
   localStorage.removeItem(CFG_KEY); $('cfgText').value = '';
@@ -2666,22 +2702,89 @@ $('hwRefresh').onclick = async () => {
   H.loaded = false; H.dirty.clear(); await loadHardware(true);
 };
 
+/* ============================================================
+   STAGED CHANGES + EXPORT
+   ============================================================ */
+const PLURAL = (n, s) => n.toLocaleString() + ' ' + s + (n === 1 ? '' : 's');
+
+function renderExportBar() {
+  if (!STORE) return;
+  const p = STORE.pending();
+  const bar = $('exportBar'), state = $('exportState');
+  bar.classList.toggle('dirty', p.total > 0);
+  $('discardDraft').hidden = p.total === 0;
+  $('exportCatalog').disabled = p.total === 0;
+
+  if (!p.total) {
+    state.innerHTML = `<span class="muted">Catalog <span class="k">${esc(STORE.baselineVersion)}</span> — ` +
+      `no staged changes. Everything here matches <code class="k">data/catalog.js</code>.</span>`;
+    $('exportDetail').innerHTML = '';
+    return;
+  }
+  const parts = Object.entries(p.byCollection).map(([name, c]) => {
+    const bits = [];
+    if (c.added) bits.push(c.added + ' added');
+    if (c.changed) bits.push(c.changed + ' changed');
+    if (c.removed) bits.push(c.removed + ' removed');
+    return `<b>${esc(name)}</b> ${bits.join(', ')}`;
+  });
+  state.innerHTML = `<b>${PLURAL(p.total, 'staged change')}</b> — not saved anywhere yet.`;
+
+  /* Removals get their own warning. Job records store these ids, so a removed
+     record makes a saved job render "no longer exists in reference data" —
+     which is invisible from this screen and only shows up in the configurator. */
+  const rem = Object.entries(p.removed || {});
+  $('exportDetail').innerHTML =
+    `<div class="note">${parts.join(' &nbsp;·&nbsp; ')}` +
+    `<br><span class="muted">Staged changes live in this browser only. They reach the team when you ` +
+    `export <code class="k">catalog.js</code>, replace the file in <code class="k">data/</code>, and commit.</span></div>` +
+    (rem.length ? `<div class="note warn"><b>Removals.</b> ` +
+      rem.map(([k, ids]) => `${esc(k)}: <code class="k">${ids.map(esc).join('</code> <code class="k">')}</code>`).join('; ') +
+      `<br><span class="muted">Any saved job referencing these will show “no longer exists in reference data”. ` +
+      `Deactivating (<code class="k">active: false</code>) keeps old jobs readable; removing does not.</span></div>` : '');
+}
+
+$('exportCatalog').onclick = () => {
+  const text = STORE.serialize();
+  download('catalog.js', text, 'text/javascript');
+  const v = STORE.version();
+  $('exportDetail').innerHTML =
+    `<div class="note ok"><b>Exported ${esc(v)}.</b> It is in <code class="k">~/Downloads/catalog.js</code>. ` +
+    `Move it to <code class="k">Product Configurator/data/catalog.js</code>, then ` +
+    `<code class="k">git add data/catalog.js &amp;&amp; git commit</code>.` +
+    `<br><span class="muted">Staged changes stay staged until you reload this page against the new file — ` +
+    `so you can keep editing and re-export.</span></div>`;
+};
+
+$('discardDraft').onclick = () => {
+  const p = STORE.pending();
+  if (!confirm(`Discard ${PLURAL(p.total, 'staged change')} and go back to catalog ${STORE.baselineVersion}?`)) return;
+  STORE.discardDraft();
+  B.loaded = false; H.loaded = false; DEPTS.loaded = false; ESC.loaded = false;
+  location.reload();
+};
+
+/* Nothing here reaches the network, so boot cannot fail on connectivity — but
+   it CAN find a draft left over from a previous session, and silently
+   resurrecting or silently dropping someone's staged edits are both bad. Say
+   which happened. */
 (async function init() {
   const saved = localStorage.getItem(CFG_KEY);
-  try {
-    const cfg = saved ? JSON.parse(saved) : DEFAULT_CFG;
-    $('cfgText').value = JSON.stringify(cfg, null, 2);
-    await connect(cfg);
-    setCfgStatus(true, cfg.projectId);
-    loadBrowse(); // Browse is the landing view, so populate it immediately
-  } catch (err) {
-    setCfgStatus(false, 'could not reach Firebase');
-    $('cfgMsg').textContent = 'Could not load the Firebase SDK — check your connection, then reopen this page. (' + err.message + ')';
-    // The config box lives inside Import, which is hidden by default — surface it,
-    // otherwise Browse just sits on "Connecting…" with no way to fix the problem.
-    setMode('import'); goto(4);
-    $('cfgBox').open = true;
+  try { $('cfgText').value = saved || JSON.stringify(DEFAULT_CFG, null, 2); } catch {}
+  setCfgStatus(true, 'file: data/catalog.js');
+
+  const { draft } = await connect();
+  if (draft && draft.stale) {
+    $('exportDetail').innerHTML =
+      `<div class="note warn"><b>A draft from an older catalog was discarded.</b> ` +
+      `It was staged against version <code class="k">${esc(draft.base)}</code>, but this page has loaded ` +
+      `<code class="k">${esc(STORE.baselineVersion)}</code> — the file changed underneath it, so those edits ` +
+      `could not be replayed safely.</div>`;
+    STORE.discardDraft();
+  } else if (draft) {
+    renderExportBar();
   }
+  loadBrowse(); // Browse is the landing view, so populate it immediately
 })();
 </script>
 </body>
