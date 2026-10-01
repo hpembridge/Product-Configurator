@@ -5,7 +5,7 @@
    there and re-export — a hand edit will be silently overwritten by the
    next export and the diff will lie.
 
-   version      1drjf0v   (content fingerprint — same data, same version)
+   version      07pm7xs   (content fingerprint — same data, same version)
 
    Records are sorted by id and keys are sorted, and nothing here is derived
    from the clock, so an unchanged catalog re-exports BYTE-IDENTICAL. An empty
@@ -15,7 +15,7 @@
    changes.
    ===================================================================== */
 
-export const CATALOG_VERSION = "1drjf0v";
+export const CATALOG_VERSION = "07pm7xs";
 
 export const materials = [
   {"active":true,"categoryId":"bookcloth","color":"20 Dark Green","decoration":"","family":"Mystique","id":"bookcloth__columbia__992","productLine":"Columbia","source":"csv","sourceFile":"Book Cloth Organization - SWATCHED (2).csv","swatchNumber":"992","vendor":"Columbia"},
@@ -1230,6 +1230,7 @@ export const materials = [
   {"active":true,"categoryId":"leather","color":"Denim","id":"leather__l132","productLine":"Napa Excel","source":"csv","sourceFile":"leather-materials-parsed.csv","swatchNumber":"L132","vendorId":"NE23","weight":"5/6 oz."},
   {"active":true,"categoryId":"other","id":"other__black-lexide","name":"Black Lexide","source":"manual"},
   {"active":true,"categoryId":"other","id":"other__pebble-nonslip","name":"Pebble Nonslip","source":"manual"},
+  {"active":true,"categoryId":"other","id":"other__regular-black","name":"Regular Black","source":"manual"},
   {"active":true,"categoryId":"rockboard","id":"rockboard__rb01","itemId":"RB01","name":"Ash","source":"csv","sourceFile":"Materials - Rockboard (1).csv"},
   {"active":true,"categoryId":"rockboard","id":"rockboard__rb02","itemId":"RB02","name":"Begonia","source":"csv","sourceFile":"Materials - Rockboard (1).csv"},
   {"active":true,"categoryId":"rockboard","id":"rockboard__rb03","itemId":"RB03","name":"Black","source":"csv","sourceFile":"Materials - Rockboard (1).csv"},

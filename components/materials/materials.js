@@ -24,9 +24,14 @@
 
    STATE SHAPE (what getState returns and setState accepts)
      { ext: [{ cat, fields: { vendor, productLine, ... }, fn, qty?, unit? }],
-       int: [{ cat, fields, fnArr: ['Liner', ...], qty?, unit? }],
+       int: [{ cat, fields, fnArr: ['Liner', ...], qty?, unit?,
+               ccFns? }],                  // functions the Check Presenter card set
        fnCards: [{ fn, data }],            // detail cards under the tables
-       ccInt: boolean }                    // Standard CC Interior card
+       ccInt: boolean,                     // a Check Presenter Interior card is present
+       cc: { parts: [{ type: panel|angled|flat|ccpocket|ccslot|penloop,
+                       count, location, size?, row? }] } | null }
+                                           // row = position in int (-1: none)
+   Sheets from before the card (ccInt only) open as the standard.
    `cat` is a catalog category id ('bookcloth', '4c-litho'). qty and unit
    exist only when mounted with showQty.
    ===================================================================== */
@@ -263,7 +268,7 @@ export async function mountMaterials(host, opts = {}) {
       dropLists(tr);
       tr.remove();
       renumber(sec);
-      if (sec === 'int') syncFunctionCards();
+      if (sec === 'int') { syncFunctionCards(); if (container_has_cc()) { ccOptions(); ccApply(); } }
     }
     changed();
   }
@@ -316,6 +321,7 @@ export async function mountMaterials(host, opts = {}) {
     if (sec === 'ext') row.fn = role(tr, 'function').value.trim();
     else row.fnArr = Array.from(role(tr, 'functions').querySelectorAll('input:checked')).map(i => i.value);
     if (showQty) { row.qty = role(tr, 'qty').value; row.unit = role(tr, 'unit').value; }
+    if (sec === 'int' && (tr._ccAdded || []).length) row.ccFns = tr._ccAdded.slice();   /* set by the Check Presenter card */
     return row;
   }
 
@@ -347,7 +353,8 @@ export async function mountMaterials(host, opts = {}) {
     const desired = [];
     FN_ORDER.forEach(fn => rowsOf('int').forEach(tr => {
       const checked = Array.from(role(tr, 'functions').querySelectorAll('input:checked')).map(i => i.value);
-      if (checked.includes(fn)) desired.push({ rowId: tr.dataset.rowId, fn });
+      /* A Function the Check Presenter card set is detailed on the card. */
+      if (checked.includes(fn) && !isCcLocked(tr, fn)) desired.push({ rowId: tr.dataset.rowId, fn });
     }));
     const find = d => container.querySelector('[data-fn="' + d.fn + '"][data-row-id="' + d.rowId + '"]');
     const keys = new Set(desired.map(d => d.fn + '::' + d.rowId));
@@ -372,19 +379,160 @@ export async function mountMaterials(host, opts = {}) {
     });
   }
 
-  function addCcInterior() {
+  /* ---- CHECK PRESENTER INTERIOR ---------------------------------------
+     One card for the whole interior. It comes in as the standard and is
+     changed with the add / remove buttons, so unused parts take no room.
+     Each part has a count, location and size, and — except CC slots and
+     pen loops — the interior material it is made of. Materials are defined
+     in the Interior table; the card only picks one. Picking checks that
+     part's Function on the row (Panel → Panels, any pocket → Pockets) and
+     locks it there: the table stays the list production reads, and the
+     row's own function card isn't asked for (the card has the details).
+     CC slots and pen loops print under the interior table.
+     Card → table only: removing a part un-checks what the card checked,
+     never a Function someone ticked by hand. */
+  const CC_TYPES = {
+    panel:    { label: 'Panel',         fn: 'Panels',  size: true,  material: true },
+    angled:   { label: 'Angled Pocket', fn: 'Pockets', size: true,  material: true },
+    flat:     { label: 'Flat Pocket',   fn: 'Pockets', size: true,  material: true },
+    ccpocket: { label: 'CC Pocket',     fn: 'Pockets', size: true,  material: true },
+    ccslot:   { label: 'CC Slot',       fn: null,      size: false, material: false },
+    penloop:  { label: 'Pen Loop',      fn: null,      size: true,  material: false },
+  };
+  const CC_STANDARD_SIZE = '4" x 2.5"';        // angled pocket
+  const CC_STANDARD_PANEL = '4" x 8.5"';
+  const ccCard = () => fnCards().querySelector('[data-cc-int]');
+  const container_has_cc = () => !!ccCard();
+  const rowById = id => rowsOf('int').find(tr => tr.dataset.rowId === id) || null;
+  const rowLabel = tr => role(tr, 'print').textContent.trim();
+  const ccParts = () => ccCard() ? Array.from(ccCard().querySelectorAll('.materials__cc-part')) : [];
+
+  /* [{ type, count, location, size, row }] — row is the row id. */
+  function ccRead() {
+    return ccParts().map(el => {
+      const p = { type: el.dataset.part };
+      el.querySelectorAll('[data-cc-field]').forEach(i => { p[i.dataset.ccField] = i.value.trim(); });
+      if (!CC_TYPES[p.type].material) delete p.row;
+      return p;
+    });
+  }
+
+  function ccAddPart(data) {
+    const t = CC_TYPES[data.type];
+    if (!t) return null;
+    const el = tpl('cc-part');
+    el.dataset.part = data.type;
+    role(el, 'cc-name').textContent = t.label;
+    if (!t.size) el.querySelector('[data-cc-field="size"]').classList.add('materials__cc-na');
+    if (!t.material) el.querySelector('[data-cc-field="row"]').classList.add('materials__cc-na');
+    role(ccCard(), 'cc-parts').append(el);
+    ccOptions(el);
+    ['count', 'location', 'size'].forEach(f => { if (data[f]) el.querySelector('[data-cc-field="' + f + '"]').value = data[f]; });
+    ccLocation(el, !!data.location);
+    const sel = el.querySelector('[data-cc-field="row"]');
+    if (data.row && rowById(data.row)) sel.value = data.row;
+    ccHead();
+    return el;
+  }
+  /* Location opens from its button and closes (and clears) with ×. */
+  function ccLocation(el, open, focus) {
+    const field = el.querySelector('.materials__cc-loc-field');
+    field.hidden = !open;
+    el.querySelector('.materials__cc-loc-add').hidden = open;
+    const inp = el.querySelector('[data-cc-field="location"]');
+    if (!open) inp.value = '';
+    else if (focus) inp.focus();
+  }
+  const ccHead = () => { const card = ccCard(); if (card) role(card, 'cc-head').hidden = !ccParts().length; };
+
+  /* The Material lists: the interior rows that have a material. */
+  function ccOptions(only) {
+    const rows = rowsOf('int').filter(tr => rowLabel(tr));
+    (only ? [only] : ccParts()).forEach(el => {
+      const sel = el.querySelector('[data-cc-field="row"]');
+      const keep = sel.value;
+      sel.replaceChildren(new Option(rows.length ? 'Choose an interior material' : 'Add it to the Interior table first', ''),
+        ...rows.map(tr => new Option((rowsOf('int').indexOf(tr) + 1) + ' · ' + rowLabel(tr), tr.dataset.rowId)));
+      sel.value = rows.some(tr => tr.dataset.rowId === keep) ? keep : '';
+    });
+  }
+
+  /* Put the card's parts onto the table: check + lock each part's
+     Function on its row; undo whatever the card set before. */
+  function ccApply() {
+    rowsOf('int').forEach(tr => {
+      const added = tr._ccAdded || [];
+      role(tr, 'functions').querySelectorAll('input[data-cc-locked]').forEach(cb => {
+        if (added.includes(cb.value)) cb.checked = false;
+        cb.disabled = false;
+        delete cb.dataset.ccLocked;
+        cb.closest('.materials__msd-opt').classList.remove('is-cc-locked');
+      });
+      tr._ccAdded = [];
+    });
+    ccRead().forEach(p => {
+      const fn = CC_TYPES[p.type].fn;
+      const tr = fn && p.row && rowById(p.row);
+      if (!tr) return;
+      const cb = role(tr, 'functions').querySelector('input[value="' + fn + '"]');
+      if (!cb) return;
+      if (!cb.checked && !tr._ccAdded.includes(fn)) { cb.checked = true; tr._ccAdded.push(fn); }
+      cb.dataset.ccLocked = '1';
+      cb.disabled = true;
+      cb.closest('.materials__msd-opt').classList.add('is-cc-locked');
+    });
+    rowsOf('int').forEach(tr => msdLabel(role(tr, 'functions')));
+    syncFunctionCards();
+    ccBadge();
+  }
+  const isCcLocked = (tr, fn) => !!role(tr, 'functions').querySelector('input[value="' + fn + '"][data-cc-locked]');
+
+  /* Standard: one 4" x 8.5" Black Lexide panel, one Regular Black
+     4" x 2.5" angled pocket and one CC slot — nothing else, no locations. */
+  function ccBadge() {
+    const card = ccCard(); if (!card) return;
+    const parts = ccRead();
+    const lc = v => String(v || '').replace(/\s+/g, '').toLowerCase();
+    const on = (p, name) => { const tr = p.row && rowById(p.row); return !!tr && rowLabel(tr).toLowerCase() === name; };
+    const one = p => !p.count || p.count === '1';
+    const std = parts.length === 3 && !parts.some(p => p.location) &&
+      parts.some(p => p.type === 'panel' && one(p) && on(p, 'black lexide') && lc(p.size) === lc(CC_STANDARD_PANEL)) &&
+      parts.some(p => p.type === 'angled' && one(p) && on(p, 'regular black') && lc(p.size) === lc(CC_STANDARD_SIZE)) &&
+      parts.some(p => p.type === 'ccslot' && one(p));
+    const b = role(card, 'cc-badge');
+    b.textContent = !parts.length ? 'Not set' : std ? 'Standard' : 'Non-standard';
+    b.classList.toggle('is-custom', !!parts.length && !std);
+  }
+
+  /* The standard parts. Black Lexide and Regular Black are added to the
+     Interior table if they aren't there yet. */
+  function ccStandard() {
+    const find = name => rowsOf('int').find(tr => rowLabel(tr).toLowerCase() === name.toLowerCase());
+    const bl = find('Black Lexide') || addRow('int', { cat: 'other', fields: { name: 'Black Lexide' }, fnArr: [] });
+    const rb = find('Regular Black') || addRow('int', { cat: 'other', fields: { name: 'Regular Black' }, fnArr: [] });
+    role(ccCard(), 'cc-parts').replaceChildren();
+    ccAddPart({ type: 'panel', count: '1', size: CC_STANDARD_PANEL, row: bl.dataset.rowId });
+    ccAddPart({ type: 'angled', count: '1', size: CC_STANDARD_SIZE, row: rb.dataset.rowId });
+    ccAddPart({ type: 'ccslot', count: '1' });
+    ccApply();
+  }
+
+  /* No saved parts → the standard. */
+  function addCcInterior(saved) {
     if (container_has_cc()) return;
-    fnCards().append(tpl('cc-interior'));
+    fnCards().prepend(tpl('cc-interior'));
     role(root, 'cc-add').disabled = true;
+    if (saved) { saved.forEach(ccAddPart); ccApply(); }
+    else ccStandard();
     changed();
   }
   function removeCcInterior() {
-    const card = fnCards().querySelector('[data-cc-int]');
+    const card = ccCard();
     if (card) card.remove();
+    ccApply();          /* no card: un-checks and unlocks everything it set */
     role(root, 'cc-add').disabled = false;
     changed();
   }
-  const container_has_cc = () => !!fnCards().querySelector('[data-cc-int]');
 
   /* ---- events (delegated) --------------------------------------------- */
   root.addEventListener('click', e => {
@@ -398,12 +546,23 @@ export async function mountMaterials(host, opts = {}) {
       case 'decor-close':       closeDecoration(btn); changed(); break;
       case 'add-cc-interior':   addCcInterior(); break;
       case 'remove-cc-interior': removeCcInterior(); break;
+      case 'cc-standard':       ccStandard(); changed(); break;
+      case 'cc-add-part': {
+        const el = ccAddPart({ type: btn.dataset.part, count: '1' });
+        ccApply(); changed();
+        if (el) el.querySelector('[data-cc-field="count"]').focus();
+        break;
+      }
+      case 'cc-loc-open':       ccLocation(btn.closest('.materials__cc-part'), true, true); break;
+      case 'cc-loc-close':      ccLocation(btn.closest('.materials__cc-part'), false); ccBadge(); changed(); break;
+      case 'cc-remove-part':    btn.closest('.materials__cc-part').remove(); ccHead(); ccApply(); changed(); break;
     }
   });
   document.addEventListener('click', e => { if (!e.target.closest('.materials__msd')) closeAllMsd(); });
 
   root.addEventListener('input', e => {
     const t = e.target;
+    if (t.dataset.ccField) { ccBadge(); changed(); return; }
     const tr = t.closest('tr.materials__row');
     if (tr && t.dataset.role === 'field') {
       /* Emptied by hand → stays empty. A value typed here → every field
@@ -419,6 +578,7 @@ export async function mountMaterials(host, opts = {}) {
 
   root.addEventListener('change', e => {
     const t = e.target;
+    if (t.dataset.ccField) { if (t.dataset.ccField === 'row') ccApply(); else ccBadge(); changed(); return; }
     if (t.dataset.role === 'category') {
       const tr = t.closest('tr');
       showFields(tr, t.value);
@@ -434,6 +594,8 @@ export async function mountMaterials(host, opts = {}) {
   });
 
   /* Keyboard: the multi-select, then arrow / enter navigation between cells. */
+  /* Material lists follow the Interior table: rebuilt when one is opened. */
+  root.addEventListener('focusin', e => { if (e.target.dataset.ccField === 'row') ccOptions(e.target.closest('.materials__cc-part')); });
   root.addEventListener('keydown', e => {
     const t = e.target;
     if (t.matches('.materials__msd-btn')) msdBtnKeydown(e, t);
@@ -559,7 +721,13 @@ export async function mountMaterials(host, opts = {}) {
         });
         return { fn: card.dataset.fn, data };
       });
-      return { ext: rowsOf('ext').map(readRow), int: rowsOf('int').map(readRow), fnCards: cards, ccInt: container_has_cc() };
+      /* Check Presenter parts point at rows by position in the Interior table. */
+      let cc = null;
+      if (container_has_cc()) {
+        const ids = rowsOf('int').map(tr => tr.dataset.rowId);
+        cc = { parts: ccRead().map(p => 'row' in p ? Object.assign({}, p, { row: p.row ? ids.indexOf(p.row) : -1 }) : p) };
+      }
+      return { ext: rowsOf('ext').map(readRow), int: rowsOf('int').map(readRow), fnCards: cards, ccInt: container_has_cc(), cc };
     },
 
     /* Replace the section's contents. Missing pieces are simply empty. */
@@ -574,7 +742,9 @@ export async function mountMaterials(host, opts = {}) {
         role(root, 'cc-add').disabled = false;
 
         (s.ext && s.ext.length ? s.ext : [null]).forEach(r => addRow('ext', r));
-        (s.int || []).forEach(r => addRow('int', r));
+        /* Functions the Check Presenter card set come back from the card. */
+        (s.int || []).forEach(r => addRow('int', r && r.ccFns
+          ? Object.assign({}, r, { fnArr: (r.fnArr || []).filter(f => !r.ccFns.includes(f)) }) : r));
         syncFunctionCards();
 
         const cards = Array.from(fnCards().querySelectorAll('[data-fn][data-row-id]'));
@@ -594,7 +764,13 @@ export async function mountMaterials(host, opts = {}) {
             }
           });
         });
-        if (s.ccInt) addCcInterior();
+        if (s.cc && Array.isArray(s.cc.parts)) {
+          const ids = rowsOf('int').map(tr => tr.dataset.rowId);
+          addCcInterior(s.cc.parts.map(p => Object.assign({}, p, { row: p.row >= 0 ? ids[p.row] || '' : '' })));
+        } else if (s.ccInt) {
+          /* Saved with the old Standard CC Interior card: the standard. */
+          addCcInterior();
+        }
       } finally { suspended = false; }
       changed();
     },
@@ -648,9 +824,19 @@ export async function mountMaterials(host, opts = {}) {
       const fill = (tr, items) => role(tr, 'fn-print').replaceChildren(...items.map(text => {
         const li = tpl('fn-print-item'); li.textContent = text; return li;
       }));
+      const cc = ccRead();
+      const ccItem = p => {
+        const d = [p.size, p.location].filter(Boolean);
+        return CC_TYPES[p.type].label + (p.count && p.count !== '1' ? ' ×' + p.count : '') + (d.length ? ' — ' + d.join(' · ') : '');
+      };
+      /* Interior rows: the functions set by hand. What the Check Presenter
+         card set prints in its own section (ccPrintData), so a row used
+         only by the card is left out of this table on paper. */
       rowsOf('int').forEach(tr => {
         const checked = Array.from(role(tr, 'functions').querySelectorAll('input:checked')).map(i => i.value);
-        fill(tr, checked.map(fn => {
+        const own = checked.filter(fn => !isCcLocked(tr, fn));
+        tr.classList.toggle('is-print-moved', checked.length > 0 && own.length === 0);
+        fill(tr, own.map(fn => {
           const card = fnCards().querySelector('[data-fn="' + fn + '"][data-row-id="' + tr.dataset.rowId + '"]');
           const vals = card ? cardValues(card) : [];
           return fn + (vals.length ? ' — ' + vals.join(' · ') : '');
@@ -660,6 +846,39 @@ export async function mountMaterials(host, opts = {}) {
       rowsOf('ext').forEach(tr => {
         fill(tr, role(tr, 'function').value.split(',').map(x => x.trim()).filter(Boolean));
       });
+    },
+
+    /* The Check Presenter Interior as its own printed section (MCS):
+       { status: 'Standard' | 'Non-standard', rows: [{ cat, material, items }] }
+       — first the interior materials the card uses, each with its parts
+       ("Angled Pocket — 4" x 2.5""), then the parts with no material
+       (CC Slot, Pen Loop) with their size / location. null when there is
+       no card. Call after preparePrint(). */
+    ccPrintData() {
+      if (!container_has_cc()) return null;
+      ccBadge();
+      const cc = ccRead();
+      const detail = p => [p.size, p.location].filter(Boolean).join(' · ');
+      const named = p => CC_TYPES[p.type].label + (p.count && p.count !== '1' ? ' ×' + p.count : '');
+      const rows = [];
+      rowsOf('int').forEach(tr => {
+        const parts = cc.filter(p => CC_TYPES[p.type].fn && p.row === tr.dataset.rowId);
+        if (!parts.length) return;
+        const sel = role(tr, 'category');
+        rows.push({
+          cat: sel.value ? sel.selectedOptions[0].textContent.trim() : '',
+          material: rowLabel(tr),
+          items: parts.map(p => named(p) + (detail(p) ? ' — ' + detail(p) : '')),
+        });
+      });
+      cc.filter(p => !CC_TYPES[p.type].fn || !rowById(p.row || '')).forEach(p => {
+        rows.push({
+          cat: '',
+          material: named(p) + (CC_TYPES[p.type].material ? ' (material not set)' : ''),
+          items: detail(p) ? [detail(p)] : [],
+        });
+      });
+      return { status: role(ccCard(), 'cc-badge').textContent.trim(), rows };
     },
 
     /* Labelled rows for a page that prints its own layout (BLC). */

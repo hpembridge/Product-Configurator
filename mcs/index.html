@@ -529,8 +529,9 @@
       width: 100%;
     }
 
-    /* Print-only lines (filled by preparePrintLayout) */
-    .print-lines {
+    /* Print-only lines and sections (filled by preparePrintLayout) */
+    .print-lines,
+    .print-only {
       display: none;
     }
 
@@ -1122,6 +1123,35 @@
         padding-top: 4px;
       }
 
+      .band.print-only {
+        display: flex;
+      }
+
+      .section.print-only {
+        display: block;
+      }
+
+      /* Function column: the material tables' print width (~27%). */
+      .print-table .print-table__fn {
+        width: 27%;
+      }
+
+      /* Lines the columns up with the material tables' remove column. */
+      .print-table .print-table__rm {
+        width: 26px;
+      }
+
+      .print-fn {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .print-fn:has(li + li) {
+        list-style: disc;
+        padding-left: 16px;
+      }
+
       .print-table {
         width: 100%;
         border-collapse: collapse;
@@ -1464,6 +1494,19 @@
         <div id="materials-mount"></div>
       </div>
 
+      <!-- ===== CHECK PRESENTER INTERIOR (print only) =====
+           Edited in the Check Presenter Interior card under the material
+           tables; on paper it gets its own section: the interior materials it
+           uses with their parts, then CC slots and pen loops. Filled by
+           preparePrintLayout() from materialsSection.ccPrintData(). -->
+      <div class="band band--split print-only" data-print-section="cc">
+        Check Presenter Interior
+        <div class="count-group"><span class="count" id="ccPrintStatus"></span></div>
+      </div>
+      <div class="section print-only">
+        <div class="print-lines" data-print-cc></div>
+      </div>
+
       <!-- ===== SECTION 4: CUSTOMIZATIONS (sailcloth + custom board) ===== -->
       <div class="band" data-print-section="customizations">Customizations</div>
       <div class="section">
@@ -1584,6 +1627,34 @@
           </thead>
           <tbody></tbody>
         </table>
+      </template>
+      <!-- PrintCcTable — the Check Presenter Interior section: same columns
+           and look as the interior materials table. -->
+      <template id="printCcTableTemplate">
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th class="print-table__num">#</th>
+              <th class="print-table__item">Interior</th>
+              <th>Material</th>
+              <th class="print-table__fn">Function</th>
+              <th class="print-table__rm"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </template>
+      <template id="printCcRowTemplate">
+        <tr class="print-line">
+          <td class="print-table__num"></td>
+          <td class="print-table__item" data-cc-print="cat"></td>
+          <td data-cc-print="material"></td>
+          <td class="print-table__fn"><ul class="print-fn" data-cc-print="items"></ul></td>
+          <td class="print-table__rm"></td>
+        </tr>
+      </template>
+      <template id="printFnItemTemplate">
+        <li></li>
       </template>
       <template id="printRowTemplate">
         <tr class="print-line">
@@ -2855,7 +2926,7 @@
     }
 
     function preparePrintLayout() {
-      document.querySelectorAll('.print-lines').forEach(function (host) {
+      document.querySelectorAll('.print-lines[data-print-for]').forEach(function (host) {
         host.replaceChildren();
         var src = document.getElementById(host.dataset.printFor);
         var cards = Array.from(src.children).filter(function (card) {
@@ -2878,12 +2949,37 @@
 
       if (materialsSection) materialsSection.preparePrint();
 
+      /* Check Presenter Interior: its own section, after the materials. */
+      var ccHost = document.querySelector('[data-print-cc]');
+      ccHost.replaceChildren();
+      var cc = materialsSection && materialsSection.ccPrintData();
+      document.getElementById('ccPrintStatus').textContent = cc ? cc.status : '';
+      if (cc && cc.rows.length) {
+        var ccTable = document.getElementById('printCcTableTemplate').content.firstElementChild.cloneNode(true);
+        var ccBody = ccTable.querySelector('tbody');
+        cc.rows.forEach(function (r, i) {
+          var tr = document.getElementById('printCcRowTemplate').content.firstElementChild.cloneNode(true);
+          tr.querySelector('.print-table__num').textContent = i + 1;
+          tr.querySelector('[data-cc-print="cat"]').textContent = r.cat;
+          tr.querySelector('[data-cc-print="material"]').textContent = r.material;
+          var ul = tr.querySelector('[data-cc-print="items"]');
+          r.items.forEach(function (t) {
+            var li = document.getElementById('printFnItemTemplate').content.firstElementChild.cloneNode(true);
+            li.textContent = t;
+            ul.appendChild(li);
+          });
+          ccBody.appendChild(tr);
+        });
+        ccHost.appendChild(ccTable);
+      }
+
       /* Hide a section's band and body when there's nothing to print. */
       var notesRow = document.getElementById('notesRow');
       var hasMaterials = !materialsSection || materialsSection.describe().some(function (r) { return r.hasContent; }) ||
         !!document.querySelector('#materials-mount [data-cc-int]');
       var has = {
         materials: hasMaterials,
+        cc: !!(cc && cc.rows.length),
         customizations: !!document.querySelector('[data-print-for="customizationRows"] .print-line'),
         binding: !!document.querySelector('[data-print-for="bindingRows"] .print-line'),
         decoration: !!document.querySelector('[data-print-for="decorRows"] .print-line'),

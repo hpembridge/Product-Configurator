@@ -60,13 +60,14 @@
     </table>
     <div class="materials__actions">
       <button type="button" class="materials__add" data-action="add-row" data-sec="int">+ Interior Material</button>
-      <button type="button" class="materials__add" data-action="add-cc-interior" data-role="cc-add">+ Standard Check Presenter Interior</button>
+      <button type="button" class="materials__add" data-action="add-cc-interior" data-role="cc-add">+ Check Presenter Interior</button>
     </div>
   </div>
   <!-- /Interior materials -->
 
-  <!-- Function cards: one per checked interior Function, plus the Standard CC Interior -->
+  <!-- Function cards: one per checked interior Function, plus the Check Presenter Interior -->
   <div class="materials__fn-cards" data-role="fn-cards"></div>
+
 
 </div>
 <!-- /Materials -->
@@ -122,6 +123,9 @@
       <span class="materials__print" data-role="print"></span>
     </td>
     <td class="materials__col-fn">
+      <!-- CC Slot and Pen Loop are set from the Check Presenter Interior card
+           only (data-cc-only): they show here when the card has set them
+           (locked) or on an older sheet that ticked them by hand. -->
       <div class="materials__msd" data-role="functions" data-placeholder="Function">
         <button type="button" class="materials__msd-btn" data-action="msd-toggle">
           <span class="materials__msd-val">Function</span>
@@ -131,8 +135,8 @@
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Liner"> Liner</label>
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Panels"> Panels</label>
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Pockets"> Pockets</label>
-          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="CC Slot"> CC Slot</label>
-          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Pen Loop"> Pen Loop</label>
+          <label class="materials__msd-opt" tabindex="-1" data-cc-only><input type="checkbox" value="CC Slot"> CC Slot</label>
+          <label class="materials__msd-opt" tabindex="-1" data-cc-only><input type="checkbox" value="Pen Loop"> Pen Loop</label>
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Corners"> Corners</label>
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Tabs"> Tabs</label>
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Other"> Other</label>
@@ -232,11 +236,60 @@
   </div>
 </template>
 
-<!-- Standard Check Presenter interior -->
+<!-- Check Presenter Interior — the whole interior in one card. Comes in as
+     the standard (one 4" x 8.5" Black Lexide panel, Regular Black 4" x 2.5" angled pocket,
+     CC slot); parts are added and removed with the buttons, so only what the
+     interior has takes up room. Each part has a count, location and size, and
+     (except CC slots and pen loops) the interior material it is made of —
+     picked from the Interior table. Picking one checks that part's Function on
+     the row (Panels, Pockets) and locks it there, so the table stays the list
+     production reads. Behaviour: the CHECK PRESENTER block in materials.js. -->
 <template data-tpl="cc-interior">
-  <div class="materials__fn-card materials__fn-card--cc" data-cc-int>
-    <span class="materials__fn-title">Standard CC Interior</span>
-    <div class="materials__cc-text">Black Lexide Panel<br>Regular Black Angled Pocket<br>CC Slot</div>
+  <div class="materials__fn-card materials__cc" data-cc-int>
+    <div class="materials__cc-head">
+      <span class="materials__fn-title">Check Presenter Interior</span>
+      <span class="materials__cc-badge" data-role="cc-badge">Standard</span>
+      <button type="button" class="materials__cc-standard" data-action="cc-standard"
+              title="4&quot; x 8.5&quot; Black Lexide panel, Regular Black 4&quot; x 2.5&quot; angled pocket, CC slot — adds those rows to the Interior table if they're missing">Reset to standard</button>
+    </div>
+    <div class="materials__cc-row materials__cc-row--head" data-role="cc-head">
+      <span></span>
+      <span class="materials__fn-label">Count</span>
+      <span class="materials__fn-label">Location</span>
+      <span class="materials__fn-label">Size</span>
+      <span class="materials__fn-label">Material</span>
+      <span></span>
+    </div>
+    <div class="materials__cc-parts" data-role="cc-parts"></div>
+    <div class="materials__cc-actions">
+      <button type="button" class="materials__add" data-action="cc-add-part" data-part="panel">+ Panel</button>
+      <button type="button" class="materials__add" data-action="cc-add-part" data-part="angled">+ Angled Pocket</button>
+      <button type="button" class="materials__add" data-action="cc-add-part" data-part="flat">+ Flat Pocket</button>
+      <button type="button" class="materials__add" data-action="cc-add-part" data-part="ccpocket">+ CC Pocket</button>
+      <button type="button" class="materials__add" data-action="cc-add-part" data-part="ccslot">+ CC Slot</button>
+      <button type="button" class="materials__add" data-action="cc-add-part" data-part="penloop">+ Pen Loop</button>
+    </div>
     <button type="button" class="materials__rm materials__rm--card" data-action="remove-cc-interior" title="Remove">&times;</button>
+  </div>
+</template>
+
+<!-- One part of the Check Presenter Interior. Cells a kind of part doesn't
+     have (Size and Material on a CC slot, Material on a pen loop) are kept
+     for alignment but hidden (.materials__cc-na). -->
+<template data-tpl="cc-part">
+  <div class="materials__cc-row materials__cc-part">
+    <span class="materials__cc-name" data-role="cc-name"></span>
+    <input type="text" class="materials__fn-input materials__cc-count" data-cc-field="count" inputmode="numeric" aria-label="Count">
+    <!-- Location is optional: a button that opens the field, × closes and clears it. -->
+    <div class="materials__cc-loc">
+      <button type="button" class="materials__cc-loc-add" data-action="cc-loc-open">+ Location</button>
+      <span class="materials__cc-loc-field" hidden>
+        <input type="text" class="materials__fn-input" data-cc-field="location" aria-label="Location">
+        <button type="button" class="materials__decor-dismiss" data-action="cc-loc-close" title="Remove location">&times;</button>
+      </span>
+    </div>
+    <input type="text" class="materials__fn-input" data-cc-field="size" aria-label="Size">
+    <select class="materials__fn-input" data-cc-field="row" aria-label="Material"></select>
+    <button type="button" class="materials__rm" data-action="cc-remove-part" title="Remove">&times;</button>
   </div>
 </template>

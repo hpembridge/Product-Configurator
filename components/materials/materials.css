@@ -412,11 +412,84 @@
   border: solid 1px var(--ink);
   width: 100%;
 }
-.materials__cc-text {
-  font-size: 11px;
-  color: var(--ink);
-  line-height: 1.5;
+/* ── Check Presenter Interior card ────────────────────────────────
+   Full width under the function cards: one line per part —
+   checkbox + name | Count | Location | Material. */
+.materials__cc { grid-column: 1 / -1; }
+.materials__cc-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-right: 28px;   /* room for the remove button */
+  border-bottom: 1px solid var(--surface);
 }
+.materials__cc-head .materials__fn-title { border-bottom: none; margin-bottom: 0; }
+.materials__cc-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--surface);
+  color: var(--muted);
+}
+.materials__cc-badge.is-custom {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, #fff);
+  color: var(--ink);
+}
+.materials__cc-standard {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.materials__cc-standard:hover { color: var(--ink); }
+/* Part name | Count | Location | Size | Material | remove */
+.materials__cc-row {
+  display: grid;
+  grid-template-columns: 120px 56px minmax(0, 1fr) 110px minmax(0, 1.4fr) 26px;
+  gap: 6px 10px;
+  align-items: center;
+}
+.materials__cc-row--head { margin-bottom: -2px; }
+.materials__cc-row--head[hidden] { display: none; }
+.materials__cc-parts { display: flex; flex-direction: column; gap: 6px; }
+.materials__cc-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+.materials__cc-count { text-align: right; }
+.materials__cc-row select.materials__fn-input { padding-right: 4px; }
+.materials__cc-na { visibility: hidden; }
+.materials__cc-loc { min-width: 0; }
+.materials__cc-loc-add {
+  border: none;
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: .02em;
+}
+.materials__cc-loc-add:hover { background: color-mix(in srgb, var(--accent) 25%, #fff); }
+.materials__cc-loc-field:not([hidden]) { display: flex; align-items: center; }
+.materials__cc-loc-field .materials__fn-input { flex: 1; min-width: 0; }
+
+/* CC Slot / Pen Loop in the interior Function list: only shown when the
+   Check Presenter card set them, or an older sheet ticked one by hand. */
+.materials__msd-opt[data-cc-only]:not(.is-cc-locked):not(:has(input:checked)) { display: none; }
+.materials__cc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+
+/* A Function the card set on a row: checked, locked, marked. */
+.materials__msd-opt.is-cc-locked { color: var(--muted); cursor: default; }
+.materials__msd-opt.is-cc-locked::after { content: "  · Check Presenter"; font-size: 10px; }
 .materials__rm--card {
   position: absolute;
   top: 6px;
@@ -434,9 +507,9 @@
 .materials__fn-print { display: none; }
 
 @media print {
-  /* MCS (after preparePrint()): each interior row's Function cell carries its
-     function cards' details, so the cards themselves don't print. The
-     Standard CC Interior card has no row, so it still does. */
+  /* MCS (after preparePrint()): each row's Function cell carries its
+     function cards' and Check Presenter parts' details, so the cards
+     themselves don't print. */
   .materials--print-fold .materials__col-fn .materials__msd,
   .materials--print-fold .materials__col-fn .materials__function { display: none !important; }
   .materials--print-fold .materials__fn-print {
@@ -452,10 +525,14 @@
     padding-left: 22px;
   }
   .materials--print-fold .materials__fn-cards [data-row-id] { display: none !important; }
+  .materials--print-fold .materials__cc { display: none !important; }    /* its parts print on their rows */
+  /* Rows used only by the Check Presenter card print in its own section. */
+  .materials--print-fold tr.is-print-moved { display: none; }
+  .materials--print-fold .materials__group[data-sec="int"]:not(:has(tbody tr:not(.is-print-moved))) { display: none; }
   /* Function gets about half the Material column's width on paper
      (Material ≈ 55%, Function ≈ 27% of the MCS's letter-width sheet). */
   .materials--print-fold .materials__col-fn { width: 27%; }
-  .materials--print-fold .materials__fn-cards:not(:has(> :not([data-row-id]))) { display: none; }
+  .materials--print-fold .materials__fn-cards { display: none; }
 
   .materials__cat {
     background: transparent;
