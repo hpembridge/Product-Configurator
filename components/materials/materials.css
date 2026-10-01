@@ -1,0 +1,463 @@
+/* =====================================================================
+   MATERIALS SECTION — styles for components/materials/materials.html
+
+   These are the MCS's own material rules (mcs/index.html before the
+   component: .msec, .cat-select, .material-inputs, .mat-decor-*, .mat-print,
+   .msd-*, .brow / .btype / .card-field cards, .addbtn, .rm), carried over
+   with the same values and only the selectors renamed to .materials__*.
+
+   Colors come from the host page's tokens: --accent, --ink, --muted,
+   --surface, --status-red. The MCS defines all of them; blc/planner.html
+   sets them on #materials-mount.
+   ===================================================================== */
+
+.materials [hidden] { display: none !important; }
+
+/* was .msec */
+.materials {
+  padding: 4px 0 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.materials__catalog-warning {
+  padding: 10px 12px;
+  border: 1px solid var(--status-red);
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+/* was .mat-group */
+.materials__group + .materials__group {
+  border-top: 1px solid var(--surface);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+/* was .msec table */
+.materials__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* was .msec th, .mat-group th */
+.materials__table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: var(--ink);
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--accent);
+  border-right: 1px solid var(--accent);
+  text-transform: uppercase;
+}
+.materials__table th:last-child { border-right: none; }
+
+/* was .msec td */
+.materials__table td {
+  padding: 0px;
+  border-bottom: 1px solid var(--accent);
+  border-right: 1px solid var(--accent);
+  vertical-align: middle;
+  transition: background-color 0.1s ease;
+}
+.materials__table td:last-child { border-right: none; }
+
+/* column widths (were inline on the <th>s) */
+.materials__col-cat { width: 130px; }
+.materials__col-fn  { width: 180px; }
+.materials__col-rm  { width: 26px; }
+
+/* was .msec .num */
+.materials__col-num {
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+  width: 26px;
+}
+
+/* Qty and Unit exist only in the BLC. The BLC page is narrower than the MCS,
+   so its columns are tighter and the material fields wrap. */
+.materials__col-qty, .materials__col-unit { display: none; }
+.materials--qty .materials__col-qty  { display: table-cell; width: 56px; }
+.materials--qty .materials__col-unit { display: table-cell; width: 76px; }
+.materials--qty .materials__col-cat  { width: 104px; }
+.materials--qty .materials__col-fn   { width: 130px; }
+.materials--qty .materials__fields { flex-wrap: wrap; }
+.materials--qty .materials__fields input[type=text] { flex: 1 1 64px; min-width: 64px; }
+.materials--qty .materials__fields .materials__decor { flex: 1 1 64px; }
+
+/* Function column off (BLC default): hide the column, its cards and the
+   Standard CC Interior button, whose card lives with them */
+.materials--no-fn .materials__col-fn,
+.materials--no-fn .materials__fn-cards,
+.materials--no-fn [data-action="add-cc-interior"] { display: none; }
+
+/* was .msec input[type=text] */
+.materials__table input[type=text] {
+  width: 100%;
+  border: 1.5px solid transparent;
+  background: transparent;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 3px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.materials__table input[type=text]:hover { border-color: var(--accent); }
+.materials__table input[type=text]:focus {
+  outline: none;
+  background: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* was .cat-select (Unit uses the same select style) */
+.materials__cat,
+.materials__unit {
+  width: 100%;
+  border: 1.5px solid transparent;
+  background: transparent;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 3px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  cursor: pointer;
+  color: var(--ink);
+}
+.materials__cat:hover,
+.materials__unit:hover { border-color: var(--accent); }
+.materials__cat:focus,
+.materials__unit:focus {
+  outline: none;
+  background: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* was .material-inputs (dynamic fields in the center column) */
+.materials__fields {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  gap: 0;
+  min-width: 0;
+}
+.materials__fields-empty {
+  padding: 5px 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* each input is separated by a hairline divider */
+.materials__fields input[type=text] {
+  flex: 1;
+  min-width: 48px;
+  border-right: 1px solid var(--accent) !important;
+  border-radius: 0 !important;
+}
+.materials__fields input[type=text]:last-child,
+.materials__fields .materials__decor:last-child input[type=text] {
+  border-right: none !important;
+}
+
+/* was .mat-decor-field */
+.materials__decor {
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--accent);
+}
+.materials__decor:last-child { border-right: none; }
+.materials__decor:has(.materials__decor-input:not([hidden])) { flex: 1; }
+
+/* was .mat-decor-btn */
+.materials__decor-btn {
+  border: none;
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: .02em;
+  transition: background-color 0.15s ease;
+  height: 100%;
+}
+.materials__decor-btn:hover { background: color-mix(in srgb, var(--accent) 25%, #fff); }
+.materials__decor-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* was .mat-decor-input */
+.materials__decor-input {
+  flex: 1;
+  min-width: 80px;
+  border-right: none !important;
+}
+
+/* was .mat-decor-dismiss */
+.materials__decor-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.5;
+  height: 100%;
+}
+.materials__decor-dismiss:hover { opacity: 1; }
+
+/* was .rm, .msec td:has(.rm) */
+.materials__rm {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  color: var(--status-red);
+  border-radius: 3px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.materials__table td.materials__col-rm {
+  align-items: center;
+  border-left: solid .5px var(--muted);
+}
+.materials__table td.materials__col-rm:hover {
+  color: #811;
+  background: rgba(187, 51, 68, 0.1);
+}
+
+/* was .btnrow, .addbtn */
+.materials__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 2px;
+}
+.materials__add {
+  margin-top: 0;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: .03em;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.materials__add:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.materials__add:hover {
+  background: color-mix(in srgb, var(--accent) 25%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 75%, #000);
+}
+.materials__add:active { background: color-mix(in srgb, var(--accent) 38%, #fff); }
+
+/* ---- multi-select dropdown (was .msd-*) ---- */
+.materials__msd {
+  position: relative;
+  display: inline-block;
+}
+.materials__table td .materials__msd { width: 100%; }
+
+.materials__msd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: none;
+  background: #fff;
+  padding: 3px 7px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--ink);
+  height: 26px;
+  white-space: nowrap;
+  transition: border-color 0.15s ease;
+  border-style: solid;
+  border-width: 0px .5px;
+  border-radius: 0px;
+  border-color: var(--muted);
+}
+.materials__table td .materials__msd-btn {
+  width: 100%;
+  border-width: 0;          /* was #intBody td .msd-btn */
+  font-size: 12px;
+}
+.materials__msd-btn:hover { border-color: var(--accent); }
+.materials__msd-btn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.materials__msd-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+.materials__msd-caret {
+  font-size: 9px;
+  color: #888;
+  flex-shrink: 0;
+}
+.materials__msd-panel {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  background: #fff;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
+  z-index: 100;
+  min-width: 100%;
+  padding: 4px 0;
+}
+.materials__msd-opt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: background-color 0.1s ease;
+}
+.materials__msd-opt:hover,
+.materials__msd-opt:focus {
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  outline: none;
+}
+.materials__msd-opt input[type=checkbox],
+.materials__msd-opt input[type=radio] {
+  accent-color: var(--ink);
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* ---- function detail cards (were #fnCards, .brow, .btype, .card-field, .lab, .box) ---- */
+.materials__fn-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.materials__fn-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--surface);
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+  position: relative;
+}
+.materials__fn-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 65%, #000);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--surface);
+}
+.materials__fn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.materials__fn-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.materials__fn-input {
+  width: 100%;
+  border: 1.5px solid var(--ink);
+  background: #fff;
+  height: 26px;
+  padding: 3px 7px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 2px;
+  transition: border-color 0.15s ease;
+}
+.materials__fn-input:hover { border-color: var(--accent); }
+.materials__fn-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.materials__fn-card .materials__msd { width: 100%; }
+.materials__fn-card .materials__msd-btn {
+  border: solid 1px var(--ink);
+  width: 100%;
+}
+.materials__cc-text {
+  font-size: 11px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.materials__rm--card {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.materials__rm--card:hover { background-color: rgb(255, 235, 235); }
+
+/* ---- print: hidden on screen, shown in place of the inputs (was .mat-print) ---- */
+.materials__print {
+  display: none;
+  font-size: 12px;
+  padding: 5px 6px;
+  color: var(--ink);
+}
+@media print {
+  .materials__cat {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 0;
+  }
+  .materials__decor-btn,
+  .materials__add,
+  .materials__rm { display: none !important; }
+
+  /* hide inputs; show the pre-formatted print text instead */
+  .materials__fields { display: none !important; }
+  .materials__print { display: inline; }
+
+  /* --accent is white in the MCS print layout; keep the grid lines visible */
+  .materials__table th,
+  .materials__table td { border-color: #c6c6c6; }
+
+  .materials__table input[type=text]:hover,
+  .materials__table input[type=text]:focus {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .materials__group:has(tbody[data-rows="int"]:empty) { display: none; }
+  .materials__fn-card { break-inside: avoid; }
+}

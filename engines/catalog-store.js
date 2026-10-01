@@ -57,11 +57,19 @@ export function createStore(catalog, { onChange } = {}) {
     offsets: deep(catalog.offsets || {}),
   };
   let work = deep(baseline);
+  let baseVersion = catalog.version;   // version of the file on disk; moves on rebase()
   const removed = { };   // collection -> Set of ids removed
 
   /* ------------------------------------------------------------- draft */
+  /* hold() / release() bracket a batch of edits (a paste, a fill) so the
+     draft is written and onChange fires once at the end, not per cell. */
+  let held = 0, heldDirty = false;
+  const hold = () => { held++; };
+  const release = () => { if (held && --held === 0 && heldDirty) { heldDirty = false; saveDraft(); } };
+
   function saveDraft() {
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ base: catalog.version, work, at: Date.now() })); }
+    if (held) { heldDirty = true; return; }
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ base: baseVersion, work, at: Date.now() })); }
     catch (e) { /* quota — the in-memory copy is still correct */ }
     /* Fires on every mutation so the caller can keep "N unsaved changes" honest.
        Routed through here rather than left to call sites because a missed call
@@ -75,12 +83,42 @@ export function createStore(catalog, { onChange } = {}) {
     /* A draft taken against a different catalog version cannot be safely
        replayed — the file moved underneath it. Report it rather than
        silently resurrecting edits onto data the user has since replaced. */
-    if (d.base !== catalog.version) return { stale: true, base: d.base, at: d.at };
+    if (d.base !== baseVersion) return { stale: true, base: d.base, at: d.at };
     work = d.work;
     return { stale: false, at: d.at };
   }
   const discardDraft = () => { work = deep(baseline); Object.keys(removed).forEach(k => delete removed[k]);
                                try { localStorage.removeItem(DRAFT_KEY); } catch {} };
+
+  /* ------------------------------------------------------------- rebase
+     Called after `work` has been written to data/catalog.js on disk. The
+     file now IS the working copy, so it becomes the new baseline: nothing
+     is pending, the removal list is spent (the records are gone from the
+     file), and the localStorage draft is cleared. Returns the new version. */
+  function rebase() {
+    const b = deep(work);
+    Object.keys(baseline).forEach(k => { baseline[k] = b[k]; });
+    Object.keys(removed).forEach(k => delete removed[k]);
+    baseVersion = build(work).version;
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    if (onChange) { try { onChange(); } catch {} }
+    return baseVersion;
+  }
+
+  /* Replace the whole working copy — undo / redo on the page restore a
+     snapshot() taken before an edit. Removal tracking follows: an id that is
+     in the baseline but not in the restored copy counts as removed. */
+  function restore(snap) {
+    work = deep(snap);
+    Object.keys(removed).forEach(k => delete removed[k]);
+    Object.keys(COLL).forEach(name => {
+      const have = new Set(list(name).map(r => r.id));
+      baseline[COLL[name]].forEach(r => {
+        if (!have.has(r.id)) (removed[name] = removed[name] || new Set()).add(r.id);
+      });
+    });
+    saveDraft();
+  }
 
   /* --------------------------------------------------------- accessors */
   const list = name => {
@@ -191,8 +229,8 @@ export function createStore(catalog, { onChange } = {}) {
     fb: { collection, doc, where, query, getDocs, setDoc, deleteDoc, writeBatch, serverTimestamp },
     db: { __catalogStore: true },
     // store API
-    list, put, remove, pending, snapshot, serialize, version,
-    baselineVersion: catalog.version,
+    list, put, remove, pending, snapshot, serialize, version, rebase, restore, hold, release,
+    get baselineVersion() { return baseVersion; },
     loadDraft, saveDraft, discardDraft,
     removedIds: () => { const o = {}; Object.keys(removed).forEach(k => { if (removed[k].size) o[k] = [...removed[k]]; }); return o; },
   };

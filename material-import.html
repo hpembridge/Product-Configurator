@@ -7,14 +7,14 @@
 
   The fabrics spreadsheet remains source of truth for materials — CSV is
   read-only input here (decision 10). Everything else is authored in this
-  tool and Firestore is its master copy.
+  tool and data/catalog.js is its master copy.
 
   Design tokens come from the PL-SHARED submodule (shared/css/design-tokens.css).
   Still opens fine via double-click (file://) — a <link rel="stylesheet"> to a
   same-folder file isn't blocked the way fetch()/XHR is. Only breaks if the
   "shared" submodule folder is missing (run `git submodule update --init`).
 
-  No build step. Firebase v12 ESM loaded from gstatic, only when a config is present.
+  No build step. No backend — the catalog is a file (data/catalog.js).
 -->
 <html lang="en" data-theme="titanium">
 <head>
@@ -25,9 +25,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared/css/design-tokens.css">
+<link rel="stylesheet" href="components/data-grid/data-grid.css">
+<script src="https://kit.fontawesome.com/da08280601.js" crossorigin="anonymous"></script>
 
 <style>
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0; background: var(--bg-page); color: var(--text-primary);
     font-family: var(--font-family-primary, "Google Sans Flex"), system-ui, sans-serif;
@@ -182,16 +185,6 @@
   .bar { height: 6px; background: var(--bg-subtle); border-radius: var(--border-radius-full); overflow: hidden; margin-top: var(--scale-300); }
   .bar > i { display: block; height: 100%; background: var(--interactive-default); width: 0; transition: width .2s; }
 
-  .cfg-status { font-size: var(--fontsize-body-sm); display: flex; align-items: center; gap: var(--scale-200); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); flex: 0 0 auto; }
-  .dot.on  { background: var(--status-success-border); }
-  .dot.off { background: var(--status-error-border); }
-
-  details.cfg summary { cursor: pointer; font-weight: 600; font-size: var(--fontsize-body-sm); list-style: none; display: flex; align-items: center; gap: var(--scale-200); }
-  details.cfg summary::-webkit-details-marker { display: none; }
-  details.cfg summary::before { content: "▸"; color: var(--text-tertiary); }
-  details.cfg[open] summary::before { content: "▾"; }
-
   .empty { padding: var(--scale-800); text-align: center; color: var(--text-tertiary); font-size: var(--fontsize-body-sm); }
   code.k { background: var(--bg-subtle); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
 
@@ -320,6 +313,31 @@
   tr.inactive-row { opacity: .5; }
   tr.inactive-row:hover { opacity: .75; }
   .hl { background: var(--accent-bg); border-radius: 2px; padding: 0 1px; }
+
+  /* ---- save bar: folder + autosave state ---- */
+  .exportbar.saved { border-color: var(--status-success-border); background: var(--status-success-bg); }
+  .save-state { color: var(--text-tertiary); white-space: nowrap; }
+  .save-state.is-dirty { color: var(--status-warning-border); font-weight: var(--font-weight-semibold); }
+  .save-folder { display: inline-flex; align-items: center; gap: var(--scale-200); }
+  .save-folder.is-connected { color: var(--text-primary); }
+  .save-conflict .actions { margin-top: var(--scale-300); }
+
+  /* ---- materials editor (Edit materials tab) ---- */
+  .materials-editor__head { display: flex; align-items: center; gap: var(--scale-300); margin-bottom: var(--scale-200); }
+  .materials-editor__head h2 { margin: 0; font-size: var(--fontsize-body-lg); font-weight: 600; }
+  .materials-editor__head .spacer { flex: 1; }
+  .materials-editor__head .btn-secondary { display: inline-flex; align-items: center; gap: var(--scale-200); }
+  .tab-row { display: flex; gap: var(--scale-100); flex-wrap: wrap; }
+  .tab-row .tab-btn { flex: none; min-width: fit-content; padding: var(--scale-200) var(--scale-300); }
+  .tab-count { font-weight: var(--font-weight-light); opacity: .75; }
+  .materials-editor__tabs { margin-bottom: var(--scale-400); }
+  .materials-editor__toolbar { display: flex; gap: var(--scale-300); flex-wrap: wrap; align-items: center; margin-bottom: var(--scale-300); }
+  .materials-editor__toolbar .search { flex: 1 1 260px; }
+  .materials-editor__toggle { display: flex; align-items: center; gap: var(--scale-200); font-size: var(--fontsize-body-sm); color: var(--text-secondary); white-space: nowrap; }
+  .materials-editor__count { font-size: var(--fontsize-body-sm); color: var(--text-tertiary); white-space: nowrap; }
+  .materials-editor .data-grid { border: 1px solid var(--border-tertiary); }
+  .materials-editor__empty { color: var(--text-tertiary); font-size: var(--fontsize-body-sm); margin: var(--scale-300) 0 0; }
+  .csv-import__back { margin-bottom: var(--scale-400); }
 </style>
 </head>
 <body>
@@ -339,17 +357,36 @@
     <button data-m="escalation">Escalation</button>
   </div>
 
-  <!-- Pending-change bar. Firestore writes were durable the instant they
-       committed; these are not — everything is staged until catalog.js is
-       exported and committed. So this is deliberately persistent across every
-       mode rather than tucked into one screen. -->
+  <!-- ============ SAVE BAR ============
+       Where edits go, on every tab. With the Product Configurator folder
+       connected, every edit autosaves straight into data/catalog.js (same
+       pattern as the Product Management Tool's vault file). Without one,
+       edits are held in this browser and Download catalog.js is the way out. -->
   <div class="exportbar" id="exportBar">
     <span id="exportState" class="muted">Loading catalog…</span>
     <span class="spacer"></span>
-    <button class="btn-ghost" id="discardDraft" hidden>Discard staged changes</button>
-    <button class="btn-primary" id="exportCatalog" disabled>Export catalog.js</button>
+    <span class="save-state" id="saveState"></span>
+    <button class="btn-secondary save-folder" type="button" id="folderBtn">
+      <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
+      <span class="save-folder__label" id="folderLabel">Connect folder</span>
+    </button>
+    <button class="btn-ghost" type="button" id="discardDraft" hidden>Discard unsaved changes</button>
+    <button class="btn-ghost" type="button" id="exportCatalog" disabled>Download catalog.js</button>
+  </div>
+
+  <!-- SaveConflict — the file on disk is not the version this page is
+       working from (a git pull, another tab). Autosave stops until one
+       of these is picked. -->
+  <div class="note warn save-conflict" id="saveConflict" hidden>
+    <b>data/catalog.js changed on disk.</b>
+    <span id="saveConflictText"></span>
+    <div class="actions">
+      <button class="btn-primary" type="button" id="conflictReload">Reload with the file on disk</button>
+      <button class="btn-ghost" type="button" id="conflictOverwrite">Overwrite it with this tab's work</button>
+    </div>
   </div>
   <div id="exportDetail"></div>
+  <!-- ============ /SAVE BAR ============ -->
 
   <!-- ============ HARDWARE MODE ============ -->
   <section id="hwMode" hidden>
@@ -420,8 +457,65 @@
     </div>
   </section>
 
-  <!-- ============ IMPORT MODE ============ -->
+  <!-- ============ EDIT MATERIALS MODE ============ -->
   <div id="importMode" hidden>
+
+  <!-- MaterialsEditor — the Rollout Manager grid over one material
+       category at a time. Every cell is editable; edits go through the
+       catalog store, so they save like every other tab. -->
+  <section class="card materials-editor" id="matEditor">
+    <div class="materials-editor__head">
+      <h2>Materials</h2>
+      <span class="spacer"></span>
+      <button class="btn-secondary" type="button" id="matAddBtn">
+        <i class="fa-regular fa-plus" aria-hidden="true"></i> New material
+      </button>
+      <button class="btn-secondary" type="button" id="matImportBtn">
+        <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i> Import CSV
+      </button>
+    </div>
+    <p class="hint">Click a cell to select it, double-click or start typing to edit. Paste from Excel, drag the corner to fill,
+      ⌘Z to undo. The fabrics spreadsheet is still the source for its own columns — the next CSV import overwrites a
+      hand edit to those, so fix them at the source too. Untick <b>Active</b> to hide a material from the picker but
+      keep it readable on old jobs.</p>
+
+    <!-- CategoryTabs — one per material category, with its row count. -->
+    <div class="tab-row materials-editor__tabs" id="matCatTabs" role="group" aria-label="Material category">
+      <button class="tab-btn active" type="button" data-cat="bookcloth" aria-pressed="true">Bookcloth <span class="tab-count" data-count="bookcloth"></span></button>
+      <button class="tab-btn" type="button" data-cat="leather" aria-pressed="false">Leather <span class="tab-count" data-count="leather"></span></button>
+      <button class="tab-btn" type="button" data-cat="rockboard" aria-pressed="false">Rockboard <span class="tab-count" data-count="rockboard"></span></button>
+      <button class="tab-btn" type="button" data-cat="rowmark" aria-pressed="false">Rowmark <span class="tab-count" data-count="rowmark"></span></button>
+      <button class="tab-btn" type="button" data-cat="wood" aria-pressed="false">Wood <span class="tab-count" data-count="wood"></span></button>
+      <button class="tab-btn" type="button" data-cat="metal" aria-pressed="false">Metal <span class="tab-count" data-count="metal"></span></button>
+      <button class="tab-btn" type="button" data-cat="acrylic" aria-pressed="false">Acrylic <span class="tab-count" data-count="acrylic"></span></button>
+      <button class="tab-btn" type="button" data-cat="carbonite" aria-pressed="false">Carbonite <span class="tab-count" data-count="carbonite"></span></button>
+      <button class="tab-btn" type="button" data-cat="4c-litho" aria-pressed="false">4C Litho <span class="tab-count" data-count="4c-litho"></span></button>
+      <button class="tab-btn" type="button" data-cat="other" aria-pressed="false">Other <span class="tab-count" data-count="other"></span></button>
+    </div>
+
+    <!-- GridToolbar — search, inactive filter, row count. -->
+    <div class="materials-editor__toolbar">
+      <div class="search">
+        <input type="text" id="matSearch" placeholder="Search this category — swatch #, vendor, colour…" aria-label="Search materials">
+      </div>
+      <label class="materials-editor__toggle">
+        <input type="checkbox" id="matShowInactive" checked> show inactive
+      </label>
+      <span class="materials-editor__count" id="matCount"></span>
+    </div>
+
+    <!-- DataGrid host. The table inside is built by components/data-grid/data-grid.js. -->
+    <div class="data-grid" id="matGrid"></div>
+    <p class="materials-editor__empty" id="matEmpty" hidden>No materials in this category yet. Add one with <b>+ New material</b>, or import its CSV.</p>
+  </section>
+  <!-- /MaterialsEditor -->
+
+  <!-- CsvImport — the four-step spreadsheet import, unchanged, now
+       opened from Import CSV on the materials grid. -->
+  <div id="csvImport" hidden>
+  <div class="csv-import__back">
+    <button class="btn-ghost" type="button" id="csvBackBtn">← Back to materials</button>
+  </div>
 
   <div class="stepper" id="stepper">
     <div class="step active" data-s="1"><span class="n">1</span> Load CSV</div>
@@ -484,30 +578,10 @@
 
   <!-- ============ STEP 4 ============ -->
   <section class="card" id="c4" hidden>
-    <h2>4 · Apply to Firestore</h2>
+    <h2>4 · Stage changes</h2>
 
-    <details class="cfg" id="cfgBox">
-      <summary>Firebase connection <span class="cfg-status"><span class="dot off" id="cfgDot"></span><span id="cfgLabel">not configured</span></span></summary>
-      <p class="hint" style="margin-top:var(--scale-300)">
-        Paste the config object from Firebase console → Project settings → Your apps → Web app.
-        Stored in this browser only (<code class="k">localStorage</code>), never sent anywhere but Firebase.
-      </p>
-      <textarea id="cfgText" spellcheck="false" placeholder='{
-  "apiKey": "...",
-  "authDomain": "platinum-product-config.firebaseapp.com",
-  "projectId": "platinum-product-config",
-  "storageBucket": "platinum-product-config.firebasestorage.app",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
-      <div class="actions">
-        <button class="btn-secondary" id="cfgSave">Save &amp; connect</button>
-        <button class="btn-ghost" id="cfgClear">Clear</button>
-        <span id="cfgMsg" class="muted" style="font-size:var(--fontsize-body-sm)"></span>
-      </div>
-    </details>
 
-    <div id="applyBody" style="margin-top:var(--scale-400)"></div>
+    <div id="applyBody"></div>
   </section>
 
   <p class="muted" style="font-size:var(--fontsize-label); text-align:center; margin-top:var(--scale-600)">
@@ -516,8 +590,53 @@
     are never touched.
   </p>
 
+  </div><!-- /csvImport -->
   </div><!-- /importMode -->
 </div>
+
+<!-- ============ DATA GRID TEMPLATES ============
+     Cloned by components/data-grid/data-grid.js. Angular: these become the
+     grid component's own markup (row-header delete button, checkbox cell,
+     editor, menu, type-ahead list, toast). -->
+<template id="dgRowDeleteTemplate">
+  <button class="icon-btn hd-action hd-delete" type="button">
+    <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+  </button>
+</template>
+<template id="dgSortIconTemplate">
+  <i class="fa-solid hd-sort-icon" aria-hidden="true"></i>
+</template>
+<template id="dgCheckTemplate">
+  <input type="checkbox" class="cell-check" tabindex="-1">
+</template>
+<template id="dgEditorTemplate">
+  <input class="editor" type="text" autocomplete="off" spellcheck="false">
+</template>
+<template id="dgMenuTemplate">
+  <div class="menu" role="menu"></div>
+</template>
+<template id="dgMenuItemTemplate">
+  <button type="button" role="menuitem"></button>
+</template>
+<template id="dgMenuLabelTemplate">
+  <div class="mlabel"></div>
+</template>
+<template id="dgMenuNoteTemplate">
+  <div class="mnote"></div>
+</template>
+<template id="dgAutocompleteTemplate">
+  <div class="ac" role="listbox"></div>
+</template>
+<template id="dgAutocompleteItemTemplate">
+  <button type="button" role="option"></button>
+</template>
+<template id="dgToastTemplate">
+  <div class="toast" role="status">
+    <span class="toast__text"></span>
+    <button class="toast__action" type="button"></button>
+  </div>
+</template>
+<!-- ============ /DATA GRID TEMPLATES ============ -->
 
 <script type="module">
 /* ============================================================
@@ -539,6 +658,9 @@
    ============================================================ */
 import { CATALOG } from './data/catalog.js';
 import { createStore } from './engines/catalog-store.js';
+import { nameVariants, NAME_VARIANT_FIELDS } from './engines/catalog.js';
+import { createDataGrid, toast } from './components/data-grid/data-grid.js';
+import { createCatalogSaver } from './catalog-folder.js';
 
 let STORE = null;
 /* ============================================================
@@ -655,37 +777,22 @@ const CATEGORY_SCHEMAS = {
   },
   other: {
     label: 'Other', yieldEligible: false, provisional: true,
-    note: 'No split columns yet — an ID plus one concatenated name, same shape leather arrived in.',
-    vendorField: null, keyFields: ['itemId'],
+    note: 'Name only — Other materials have no ID (decided 2026-10-01). Seeded with Pebble Nonslip and Black Lexide.',
+    vendorField: null, keyFields: ['name'],
     fields: [
-      { id: 'itemId', header: 'ID',   label: 'ID' },
       { id: 'name',   header: 'Name', label: 'Name' },
     ],
   },
 };
 const TOOL_FIELDS  = ['rollWidth','patternSensitive','decorationEligible','notes'];
-const CFG_KEY = 'plpc_firebase_config';
 const BROWSE_CACHE = 'plpc_browsecache';
-/* Browse pulls the whole catalog — ~1,100 material docs, one Firestore read
-   each. Cached so repeated page loads cost nothing; Refresh forces a real
-   fetch, and every write in this tool invalidates it. */
-/* Retired. The cache existed to avoid ~1,100 Firestore reads per page load;
-   reads are now in-memory and free. Worse, a cache hit would serve the catalog
+/* Retired. Reads are in-memory and free. Worse, a cache hit would serve the catalog
    as it was BEFORE a staged edit, so Browse would contradict the editor.
    Always null — every read goes to the store. */
 const readBrowseCache = () => null;
 const writeBrowseCache = o => { try { localStorage.setItem(BROWSE_CACHE, JSON.stringify({ ...o, at: Date.now() })); } catch {} };
 const cacheAgo = ts => { const m = Math.round((Date.now() - ts) / 60000);
   return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
-// Default project — menu-product-configurator. Overridable in the UI.
-const DEFAULT_CFG = {
-  apiKey: "AIzaSyBYZU33s5qf8MLGEZcuHq9YbFLC8i-vEAk",
-  authDomain: "menu-product-configurator.firebaseapp.com",
-  projectId: "menu-product-configurator",
-  storageBucket: "menu-product-configurator.firebasestorage.app",
-  messagingSenderId: "1009158242422",
-  appId: "1:1009158242422:web:449c73472f7d015d189f57"
-};
 const BATCH_MAX = 400;
 
 /* ============================================================
@@ -837,7 +944,13 @@ function buildRecords(rows, vendorMap, category, schema) {
     if (distinct.length === 1) { exactDupes.push({ id, rows: list }); records.push(distinct[0]); }
     else collisions.push({ id, rows: list });   // excluded from write — needs a human
   }
-  return { records, collisions, exactDupes, skippedMissingKey };
+  /* Names written "A / B" are split for the MCS and BLC (nameVariants in
+     engines/catalog.js). When the counts don't line up they can't be
+     paired: still imported, just offered unsplit — flagged in review. */
+  const namePairs = records
+    .map(r => ({ r, mismatch: nameVariants(r).mismatch }))
+    .filter(x => x.mismatch);
+  return { records, collisions, exactDupes, skippedMissingKey, namePairs };
 }
 
 function diffAgainst(records, existing, schema) {
@@ -1002,7 +1115,7 @@ let activeTab = 'add';
 function renderDiff() {
   const { add, change, same, gone } = S.diff;
   const p = S.parsed;
-  const excCount = p.collisions.length + p.skippedMissingKey.length;
+  const excCount = p.collisions.length + p.skippedMissingKey.length + (p.namePairs || []).length;
 
   $('tiles').innerHTML =
     tile('new',     add.length,    'New')     + tile('changed', change.length, 'Changed') +
@@ -1024,8 +1137,8 @@ function renderDiff() {
   if (!S.db) {
     const n = el('div', 'note');
     n.id = 'noConn';
-    n.innerHTML = '<b>Not connected to Firestore.</b> Everything is treated as new. ' +
-      'Connect in step 4 to see a real diff against the existing catalog — or just download the payload and exceptions below.';
+    n.innerHTML = '<b>Catalog not loaded.</b> Everything is treated as new. ' +
+      'Reload the page to diff against data/catalog.js — or just download the payload and exceptions below.';
     $('tiles').after(n);
   }
   $('tblWrap').innerHTML = renderTable(activeTab);
@@ -1081,6 +1194,17 @@ function renderTable(kind) {
         fields.map(f => `<td>${esc(r[f.id]) || '—'}</td>`).join('') + `</tr>`).join('') +
       '</tbody></table>');
   }
+  if ((p.namePairs || []).length) {
+    const vf = fields.filter(f => NAME_VARIANT_FIELDS.includes(f.id));
+    h += section('Name pairs don\'t line up — imported, not split', 'warn',
+      `${p.namePairs.length} ${p.namePairs.length === 1 ? 'material has' : 'materials have'} a different number of " / " names in ` +
+      `${vf.map(f => f.label).join(' and ')}, so the names can't be paired. They are imported as written and offered unsplit in the MCS and BLC ` +
+      `until the spreadsheet is fixed — give each field the same number of names, or just one.`,
+      head(['Key', 'Line', ...vf.map(f => f.label)]) + p.namePairs.map(({ r, mismatch }) =>
+        `<tr><td class="mono">${esc(schema.keyFields.map(k => r[k]).join(' / '))}</td><td class="muted">${r._line}</td>` +
+        vf.map(f => `<td>${esc(r[f.id]) || '—'}${mismatch[f.id] ? ` <span class="muted">(${mismatch[f.id]})</span>` : ''}</td>`).join('') + `</tr>`).join('') +
+      '</tbody></table>');
+  }
   if (p.exactDupes.length) {
     h += section('Identical duplicate rows — merged', 'info',
       `${p.exactDupes.length} ${p.exactDupes.length === 1 ? 'key appears' : 'keys appear'} more than once with identical values. Safe to collapse; imported once.`,
@@ -1117,6 +1241,8 @@ $('dlExc').onclick = () => {
   p.collisions.forEach(c => c.rows.forEach(r =>
     L.push(['duplicate key', r._line, c.id, ...fields.map(f => r[f.id]), 'excluded — fix in spreadsheet'])));
   p.skippedMissingKey.forEach(r => L.push(['missing ' + (r._missing || []).join('/'), r._line, '', ...fields.map(f => r[f.id]), 'skipped']));
+  (p.namePairs || []).forEach(({ r, mismatch }) => L.push(['name pairs don\'t line up', r._line, r.id, ...fields.map(f => r[f.id]),
+    'imported, not split — ' + Object.entries(mismatch).map(([k, n]) => `${n} ${k} names`).join(' vs ')]));
   p.exactDupes.forEach(d => L.push(['identical duplicate', d.rows[0]._line, d.id, ...fields.map(f => d.rows[0][f.id]), d.rows.length + ' identical rows merged']));
   S.vendorMap.merges.filter(m => m.apply).forEach(m => L.push(['vendor normalized', '', '', ...fields.map(() => ''), 'merged "' + m.from + '" into "' + m.to + '" (' + m.count + ' rows)']));
   download(`material-import-exceptions-${S.category}.csv`, L.map(r => r.map(csvCell).join(',')).join('\n'), 'text/csv');
@@ -1144,8 +1270,8 @@ function renderApply() {
   b.innerHTML = '';
 
   if (!S.db) {
-    b.innerHTML = '<div class="note err"><b>Not connected.</b> Add a Firebase config above to write. ' +
-      'You can still download the payload and exceptions from step 3 — those work offline.</div>';
+    b.innerHTML = '<div class="note err"><b>Catalog not loaded.</b> Reload the page to stage changes. ' +
+      'You can still download the payload and exceptions from step 3.</div>';
     return;
   }
   if (!writes && !deacts) {
@@ -1159,7 +1285,7 @@ function renderApply() {
     (change.length ? `<li><b>${change.length.toLocaleString()}</b> updated — spreadsheet fields only; <code class="k">rollWidth</code>, <code class="k">patternSensitive</code>, <code class="k">decorationEligible</code> and <code class="k">notes</code> are preserved</li>` : '') +
     (deacts        ? `<li><b>${deacts.toLocaleString()}</b> marked inactive — hidden from the picker, still readable on existing jobs. Not deleted.</li>` : '') +
     (S.parsed.collisions.length ? `<li><b>${S.parsed.collisions.length}</b> duplicate-key materials <b>skipped</b> — fix in the spreadsheet</li>` : '') +
-    `</ul><div class="actions"><button class="btn-danger" id="doApply">Write ${(writes + deacts).toLocaleString()} changes to Firestore</button>
+    `</ul><div class="actions"><button class="btn-danger" id="doApply">Stage ${(writes + deacts).toLocaleString()} changes</button>
      <button class="btn-ghost" id="back3">← Back to review</button></div>`;
   b.append(c);
   $('back3').onclick = () => goto(3);
@@ -1202,7 +1328,7 @@ async function runApply() {
     status.innerHTML = `<b>Done.</b> ${ops.length.toLocaleString()} changes written to <code class="k">materials</code>. ` +
       (S.parsed.collisions.length ? `${S.parsed.collisions.length} duplicate-key materials were skipped — see the exceptions CSV.` : '');
     btn.textContent = 'Applied';
-    // Refresh the in-memory snapshot so a re-run diffs against what's now in Firestore.
+    // Refresh the in-memory snapshot so a re-run diffs against what's now staged.
     // Deliberately isolated: the writes are already committed at this point, so a failure
     // here is a stale-view problem, not a write problem, and must not be reported as one.
     try {
@@ -1215,9 +1341,8 @@ async function runApply() {
   } catch (err) {
     status.className = 'note err';
     status.innerHTML = '<b>The write failed partway through.</b><br>' + esc(err.message) +
-      '<br><span class="muted">Firestore writes are batched, so completed batches are saved. ' +
-      'Re-running the import is safe — it only writes what still differs. ' +
-      'If this says “permission denied”, the security rules are blocking writes to <code class="k">materials</code>.</span>';
+      '<br><span class="muted">Writes are batched, so completed batches are staged. ' +
+      'Re-running the import is safe — it only writes what still differs.</span>';
     btn.disabled = false; btn.textContent = 'Retry';
   }
 }
@@ -1235,6 +1360,7 @@ function setMode(m) {
   if (m === 'browse') loadBrowse();
   if (isDefs) { H = DEFS[m === 'hardware' ? 'hardware' : 'decorations']; applyDefsCopy(); loadHardware(); }
   $('escMode').hidden = m !== 'escalation';
+  if (m === 'import') showMaterials();
   if (m === 'departments') loadDepartments();
   if (m === 'escalation') loadEscalation();
 }
@@ -1245,10 +1371,247 @@ $('modenav').addEventListener('click', e => {
 
 
 /* ============================================================
+   MATERIALS EDITOR — the Edit materials tab
+   ------------------------------------------------------------
+   The Rollout Manager grid (components/data-grid) over one material
+   category at a time. Columns are the category's schema fields plus
+   Active; every cell is editable. Edits go straight into the catalog
+   store, so they autosave with everything else (see SAVE BAR below).
+
+   Simulated here, becomes Angular state:
+     MAT.cat / search / showInactive  → signals; matModel() → computed
+     matBegin / matCommit / matUndo   → a history service over the store
+     The CSV wizard is the same four steps as before, now opened from
+     Import CSV instead of being the whole tab.
+   ============================================================ */
+const MAT = { cat: 'bookcloth', search: '', showInactive: true, grid: null,
+              sort: null,      // { key, dir } — '__row' is the Material column
+              order: null };   // ids in sorted order, fixed when the header is clicked
+const MAT_SUGGEST_MAX = 60;   // a column with more distinct values than this gets no suggestion list
+const isOn = v => /^(yes|y|true|1|x|checked|on)$/i.test(String(v ?? '').trim());
+const byIdNum = (a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+
+const matRecords = cat => STORE.list('materials').filter(m => m.categoryId === cat);
+const matKeyLabel = (sch, m) => sch.keyDisplay ? sch.keyDisplay(m) : sch.keyFields.map(k => m[k]).filter(Boolean).join(' / ');
+
+/* The grid's model: what the table shows right now. */
+function matModel() {
+  const sch = CATEGORY_SCHEMAS[MAT.cat];
+  const all = matRecords(MAT.cat).sort(byIdNum);
+  const q = MAT.search.trim().toLowerCase();
+  /* A sort is taken when the header is clicked and then held, the way a
+     spreadsheet sort works: editing a sorted cell doesn't make its row
+     jump away. Rows added since sit at the end. */
+  if (MAT.order) {
+    const at = new Map(MAT.order.map((id, i) => [id, i]));
+    all.sort((a, b) => (at.has(a.id) ? at.get(a.id) : Infinity) - (at.has(b.id) ? at.get(b.id) : Infinity) || byIdNum(a, b));
+  }
+  const rows = all
+    .filter(m => MAT.showInactive || m.active !== false)
+    .filter(m => !q || Object.values(m).some(v => typeof v === 'string' && v.toLowerCase().includes(q)))
+    .map(m => ({ key: m.id, label: matKeyLabel(sch, m) || m.id, inactive: m.active === false }));
+
+  /* Suggestions: the values already used in this category, when there
+     are few enough to be a vocabulary (vendor, product line, weight). */
+  const suggest = {};
+  sch.fields.forEach(f => {
+    const vals = [...new Set(all.map(m => m[f.id]).filter(v => v != null && String(v).trim() !== '').map(String))];
+    if (vals.length && vals.length <= MAT_SUGGEST_MAX) suggest[f.id] = vals.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  });
+
+  const cols = sch.fields.map(f => ({
+    key: f.id, label: f.label + (sch.keyFields.includes(f.id) ? ' *' : ''),
+    title: sch.keyFields.includes(f.id) ? `${f.label} — part of the material's key; must be unique in ${sch.label}` : f.label,
+    w: f.id === 'name' ? 320 : f.id === 'color' || f.id === 'family' ? 190 : sch.keyFields.includes(f.id) && f.id !== 'vendor' ? 110 : 150,
+  })).concat([{ key: 'active', label: 'Active', bool: true, w: 80 }]);
+
+  const byId = new Map(all.map(m => [m.id, m]));
+  return {
+    sort: MAT.sort,
+    rowHead: sch.keyFields.length > 1 ? 'Material' : (sch.fields.find(f => f.id === sch.keyFields[0]) || {}).label || 'Material',
+    rows, cols,
+    cellAt(rk, ck) {
+      const m = byId.get(rk) || {};
+      if (ck === 'active') return { value: m.active !== false ? 'true' : '', bool: true, checked: m.active !== false, editable: true };
+      return { value: m[ck] ?? '', editable: true, options: suggest[ck] || null, strict: false };
+    },
+  };
+}
+
+/* Header click: A→Z, Z→A, then back to the catalog's own order.
+   Numbers sort as numbers (swatch 99 before 100), blanks always last,
+   and Active sorts active-first on A→Z. */
+function matSort(key) {
+  const cur = MAT.sort && MAT.sort.key === key ? MAT.sort.dir : '';
+  const dir = cur === '' ? 'asc' : cur === 'asc' ? 'desc' : '';
+  if (!dir) { MAT.sort = null; MAT.order = null; renderMaterials(); return; }
+  const sch = CATEGORY_SCHEMAS[MAT.cat];
+  const val = m => key === '__row' ? matKeyLabel(sch, m)
+    : key === 'active' ? (m.active !== false ? '0' : '1')
+    : String(m[key] ?? '').trim();
+  const sign = dir === 'asc' ? 1 : -1;
+  MAT.sort = { key, dir };
+  MAT.order = matRecords(MAT.cat).sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (!x !== !y) return x ? -1 : 1;                     // blanks last, either way
+    return sign * x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }) || byIdNum(a, b);
+  }).map(m => m.id);
+  renderMaterials();
+}
+
+/* One cell's edit. Returns '' or a refusal, which the grid toasts. */
+function matApply(id, field, raw) {
+  const m = STORE.list('materials').find(r => r.id === id);
+  if (!m) return 'That material no longer exists.';
+  if (field === 'active') { STORE.put('materials', id, { active: isOn(raw) }, true); return ''; }
+  const sch = CATEGORY_SCHEMAS[m.categoryId];
+  const v = String(raw ?? '').trim();
+  if (sch.keyFields.includes(field)) {
+    const label = sch.fields.find(f => f.id === field).label;
+    if (!v) return `${label} can't be blank — it's part of the material's key.`;
+    const next = { ...m, [field]: v };
+    const keyOf = r => sch.keyFields.map(k => String(r[k] ?? '').trim().toLowerCase()).join('\u0001');
+    const clash = matRecords(m.categoryId).find(r => r.id !== id && keyOf(r) === keyOf(next));
+    if (clash) return `${matKeyLabel(sch, next)} is already a ${sch.label.toLowerCase()} material.`;
+  }
+  if ((m[field] ?? '') === v) return '';
+  STORE.put('materials', id, { [field]: v }, true);
+  return '';
+}
+
+/* ---- history: undo / redo over the materials list only, so undoing
+   here never takes back an edit made on the hardware tab. ---- */
+let matPast = [], matFuture = [], matPending = null;
+const matSnap = () => JSON.stringify(STORE.list('materials'));
+function matRestore(json) {
+  const all = STORE.snapshot();
+  all.materials = JSON.parse(json);
+  STORE.restore(all);
+}
+function matBegin() { matPending = matSnap(); STORE.hold(); }
+function matCommit() {
+  STORE.release();
+  if (matPending == null) return;
+  if (matPending !== matSnap()) { matPast.push(matPending); if (matPast.length > 80) matPast.shift(); matFuture = []; B.loaded = false; }
+  matPending = null;
+  renderMaterials();
+}
+function matUndo() {
+  if (!matPast.length) return toast('Nothing to undo.');
+  matFuture.push(matSnap()); matRestore(matPast.pop()); B.loaded = false; renderMaterials();
+}
+function matRedo() {
+  if (!matFuture.length) return;
+  matPast.push(matSnap()); matRestore(matFuture.pop()); B.loaded = false; renderMaterials();
+}
+const matStep = fn => { matBegin(); fn(); matCommit(); };
+
+/* ---- new / delete / deactivate ---- */
+function matAddPlaceholder() {
+  const sch = CATEGORY_SCHEMAS[MAT.cat];
+  return sch.keyFields.map(k => sch.fields.find(f => f.id === k).label).join(' / ');
+}
+function matParseKey(text) {
+  const sch = CATEGORY_SCHEMAS[MAT.cat];
+  const parts = sch.keyFields.length > 1 ? text.split('/').map(x => x.trim()) : [text.trim()];
+  if (parts.length !== sch.keyFields.length || parts.some(p => !p)) return { err: `Type the key as ${matAddPlaceholder()}.` };
+  const vals = {};
+  sch.keyFields.forEach((k, i) => {
+    let v = parts[i];
+    /* Vendor is half the bookcloth key: reuse the existing spelling. */
+    if (k === sch.vendorField) {
+      const known = matRecords(MAT.cat).map(r => r[k]).find(x => String(x).toLowerCase() === v.toLowerCase());
+      if (known) v = known;
+    }
+    vals[k] = v;
+  });
+  const id = `${MAT.cat}__${sch.keyFields.map(k => slug(vals[k])).join('__')}`;
+  if (STORE.list('materials').some(r => r.id === id)) return { err: `${matKeyLabel(sch, vals)} already exists in ${sch.label}.` };
+  return { id, vals };
+}
+function matCreate(text) {
+  const { id, vals } = matParseKey(text);
+  matStep(() => STORE.put('materials', id, { categoryId: MAT.cat, active: true, source: 'manual', ...vals }, false));
+  /* Make sure the new row is on screen. */
+  if (MAT.search) { MAT.search = ''; $('matSearch').value = ''; renderMaterials(); }
+  toast(`${matKeyLabel(CATEGORY_SCHEMAS[MAT.cat], vals)} added. Add it to the spreadsheet too, or the next import deactivates it.`, 'Undo', matUndo);
+}
+function matDelete(id) {
+  const m = STORE.list('materials').find(r => r.id === id); if (!m) return;
+  matStep(() => STORE.remove('materials', id));
+  toast(`${matKeyLabel(CATEGORY_SCHEMAS[m.categoryId], m)} deleted.`, 'Undo', matUndo);
+}
+function matSetActive(id, on) {
+  matStep(() => STORE.put('materials', id, { active: on }, true));
+}
+function matRowMenu(id) {
+  const m = STORE.list('materials').find(r => r.id === id); if (!m) return [];
+  const on = m.active !== false;
+  return [
+    { heading: matKeyLabel(CATEGORY_SCHEMAS[m.categoryId], m) },
+    on ? { label: 'Deactivate', run: () => matSetActive(id, false) }
+       : { label: 'Reactivate', run: () => matSetActive(id, true) },
+    { label: 'Delete', danger: true, run: () => matDelete(id) },
+    { note: 'Deactivating hides it from the picker and keeps old jobs readable. Deleting does not.' },
+  ];
+}
+
+/* ---- render ---- */
+function renderMaterialCounts() {
+  const counts = {};
+  STORE.list('materials').forEach(m => { counts[m.categoryId] = (counts[m.categoryId] || 0) + 1; });
+  document.querySelectorAll('#matCatTabs [data-count]').forEach(n => { n.textContent = (counts[n.dataset.count] || 0).toLocaleString(); });
+  document.querySelectorAll('#matCatTabs .tab-btn').forEach(b => {
+    const on = b.dataset.cat === MAT.cat;
+    b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
+  });
+}
+function renderMaterials() {
+  if (!STORE || !MAT.grid) return;
+  renderMaterialCounts();
+  MAT.grid.render();
+  const total = matRecords(MAT.cat).length;
+  const shown = $('matGrid').querySelectorAll('tbody th.hd').length;
+  $('matCount').textContent = shown === total ? PLURAL(total, 'material') : `${shown.toLocaleString()} of ${PLURAL(total, 'material')}`;
+  $('matEmpty').hidden = total > 0;
+}
+function showMaterials() {
+  if (!STORE) return;
+  if (!MAT.grid) {
+    MAT.grid = createDataGrid($('matGrid'), {
+      model: matModel, applyValue: matApply,
+      begin: matBegin, commit: matCommit, undo: matUndo, redo: matRedo,
+      addRow: {
+        label: '+ New material',
+        get placeholder() { return matAddPlaceholder(); },
+        validate: text => matParseKey(text).err || '',
+        create: matCreate,
+      },
+      rowDelete: { label: 'Delete material', run: matDelete },
+      rowMenu: matRowMenu,
+      onSort: matSort,
+    });
+  }
+  renderMaterials();
+}
+
+$('matCatTabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab-btn[data-cat]'); if (!b) return;
+  MAT.cat = b.dataset.cat; MAT.sort = null; MAT.order = null; MAT.grid && MAT.grid.clearSelection();
+  renderMaterials();
+});
+$('matSearch').addEventListener('input', e => { MAT.search = e.target.value; MAT.grid && MAT.grid.clearSelection(); renderMaterials(); });
+$('matShowInactive').addEventListener('change', e => { MAT.showInactive = e.target.checked; MAT.grid && MAT.grid.clearSelection(); renderMaterials(); });
+$('matAddBtn').onclick = () => MAT.grid && MAT.grid.startAddRow();
+$('matImportBtn').onclick = () => { $('matEditor').hidden = true; $('csvImport').hidden = false; window.scrollTo({ top: 0 }); };
+$('csvBackBtn').onclick = () => { $('csvImport').hidden = true; $('matEditor').hidden = false; renderMaterials(); };
+
+
+/* ============================================================
    DEPARTMENTS + THE TAGS THAT INFER THEM
    ============================================================ */
 async function loadDepartments(force) {
-  if (!S.db) { $('deptBody').innerHTML = '<div class="empty">Not connected to Firestore yet.</div>'; return; }
+  if (!S.db) { $('deptBody').innerHTML = '<div class="empty">Catalog not loaded yet.</div>'; return; }
   if (DEPTS.loaded && !force) { renderDepartments(); return; }
   if (DEPTS.loading) return;
   DEPTS.loading = true;
@@ -1297,7 +1660,7 @@ async function seedDepartments() {
 
 function renderDepartments() {
   if (!DEPTS.list.length) {
-    $('deptStatus').innerHTML = '<div class="note warn"><b>No departments in Firestore yet.</b> The six from BLC are bundled ' +
+    $('deptStatus').innerHTML = '<div class="note warn"><b>No departments in the catalog yet.</b> The six from BLC are bundled ' +
       'with this page. <div class="actions"><button class="btn-primary" id="deptSeed">Seed 6 departments</button></div></div>';
     $('deptSeed').onclick = seedDepartments;
     $('deptBody').innerHTML = '';
@@ -1361,7 +1724,7 @@ function renderDepartments() {
    ESCALATION EDITOR — a bucket per tier
    ============================================================ */
 async function loadEscalation(force) {
-  if (!S.db) { $('escBody').innerHTML = '<div class="empty">Not connected to Firestore yet.</div>'; return; }
+  if (!S.db) { $('escBody').innerHTML = '<div class="empty">Catalog not loaded yet.</div>'; return; }
   if (ESC.loaded && !force) { renderEscalation(); return; }
   if (ESC.loading) return;
   ESC.loading = true;
@@ -1429,7 +1792,7 @@ const RULE_KINDS = [
 
 function renderEscalation() {
   if (!ESC.tiers.length) {
-    $('escStatus').innerHTML = '<div class="note warn"><b>No escalation rules in Firestore yet.</b> The four tiers and every ' +
+    $('escStatus').innerHTML = '<div class="note warn"><b>No escalation rules in the catalog yet.</b> The four tiers and every ' +
       'rule in BLC’s determineTierFromState are bundled with this page. ' +
       '<div class="actions"><button class="btn-primary" id="escSeed">Seed 4 tiers from BLC</button></div></div>';
     $('escSeed').onclick = seedEscalation;
@@ -1670,9 +2033,7 @@ function buildBrowseRows() {
 async function loadBrowse(force) {
   const wrap = $('browseTblWrap');
   if (!S.db) {
-    wrap.innerHTML = '<div class="empty">Not connected to Firestore yet.<br>' +
-      '<button class="btn-ghost" id="goFixCfg" style="margin-top:8px">Open Firebase settings</button></div>';
-    $('goFixCfg').onclick = () => { setMode('import'); goto(4); $('cfgBox').open = true; };
+    wrap.innerHTML = '<div class="empty">Catalog not loaded yet.</div>';
     $('catPills').innerHTML = ''; $('browseCount').textContent = '';
     return;
   }
@@ -1776,7 +2137,7 @@ function renderBrowse() {
 
   $('browseCount').innerHTML = `Showing <b>${rows.length.toLocaleString()}</b> of <b>${base.length.toLocaleString()}</b>` +
     (showInactive ? ' (including inactive)' : '') + (q ? ` matching &ldquo;${esc(B.search)}&rdquo;` : '') +
-    (B.cacheAt ? ` &nbsp;·&nbsp; <span class="muted">snapshot ${esc(cacheAgo(B.cacheAt))} — Refresh re-reads Firestore</span>` : '');
+    (B.cacheAt ? ` &nbsp;·&nbsp; <span class="muted">snapshot ${esc(cacheAgo(B.cacheAt))} — Refresh re-reads the catalog</span>` : '');
 
   const hl = s => {
     s = esc(s || '');
@@ -1868,46 +2229,27 @@ function renderBrowse() {
 }
 
 /* ============================================================
-   FIREBASE
+   CATALOG STORE
    ============================================================ */
-/* Was: open a Firebase app and hand back its Firestore handle.
-   Now: build the catalog store and hand back its Firestore-shaped facade.
-   Same shape out, so every call site below is unchanged. No network. */
+/* Builds the in-memory catalog store from data/catalog.js. catalog-store.js
+   exposes a collection/getDocs/writeBatch-style API, so every call site
+   below reads and stages through S.fb / S.db. No network. */
 async function connect() {
-  STORE = createStore(CATALOG, { onChange: renderExportBar });
+  STORE = createStore(CATALOG, { onChange: () => { renderExportBar(); SAVER && SAVER.schedule(); } });
   S.fb = STORE.fb; S.db = STORE.db;
   const draft = STORE.loadDraft();
   renderExportBar();
   return { draft };
 }
-function setCfgStatus(ok, label) {
-  $('cfgDot').className = 'dot ' + (ok ? 'on' : 'off');
-  $('cfgLabel').textContent = label;
-}
-/* The Firebase config box is inert now — this page does not open a connection.
-   Left in place rather than ripped out because export-catalog.html still needs
-   these credentials, and deleting the only UI that shows them would make that
-   harder to fix later. */
-$('cfgSave').onclick = async () => {
-  $('cfgMsg').innerHTML = 'This page no longer connects to Firestore — it reads and writes ' +
-    '<code class="k">data/catalog.js</code>. These credentials are still used by ' +
-    '<b>export-catalog.html</b>, so they are saved but not dialled.';
-  try { localStorage.setItem(CFG_KEY, $('cfgText').value.trim()); } catch {}
-  return;
-};
-$('cfgClear').onclick = () => {
-  localStorage.removeItem(CFG_KEY); $('cfgText').value = '';
-  S.db = null; S.fb = null; setCfgStatus(false, 'not configured'); $('cfgMsg').textContent = 'Cleared.';
-};
 
 /* ============================================================
    HARDWARE DEFINITIONS EDITOR
    ------------------------------------------------------------
-   Firestore is the source of truth once seeded. HW_SEED below is a
+   The catalog is the source of truth once seeded. HW_SEED below is a
    one-time bootstrap only — the same 14 types documented in
    hardware-config.js, inlined because ES-module imports of a local
    file are blocked over file:// (unlike <link rel=stylesheet>).
-   If the two ever disagree, Firestore wins; hardware-config.js is
+   If the two ever disagree, the catalog wins; hardware-config.js is
    the extraction record of where each definition came from.
    ============================================================ */
 const HW_SEED = [
@@ -2147,8 +2489,8 @@ function applyDefsCopy() {
 async function loadHardware(force) {
   if (!S.db) {
     $('hwList').innerHTML = '';
-    $('hwDetail').innerHTML = '<div class="empty">Not connected to Firestore yet.</div>';
-    hwSetStatus('Connect to Firebase from the Import tab before editing hardware.', 'warn');
+    $('hwDetail').innerHTML = '<div class="empty">Catalog not loaded yet.</div>';
+    hwSetStatus('Reload the page before editing hardware.', 'warn');
     return;
   }
   // Already cached — but the panes may still be showing the *other* kind, since
@@ -2164,15 +2506,15 @@ async function loadHardware(force) {
     snap.forEach(d => H.types.push({ id: d.id, ...d.data() }));
     H.types.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
     // Field ids are the keys job data is stored under, so they must not drift when
-    // someone retitles a field. Lock every id that came back from Firestore; only
+    // someone retitles a field. Lock every id that came back from the catalog; only
     // freshly-added fields derive their id from the label as you type.
     H.types.forEach(t => (t.fields || []).forEach(f => { f._idLocked = true; }));
     // Pristine copy so Revert can restore one type without discarding edits to others.
     H.pristine = new Map(H.types.map(t => [t.id, JSON.parse(JSON.stringify(t))]));
     H.loaded = true; H.dirty.clear();
     if (!H.types.length) {
-      hwSetStatus(`<b>No ${esc(H.noun)}s in Firestore yet.</b> The ${H.seed.length} pulled out of the existing tools are bundled with ` +
-        `this page — seeding writes them to the <code class="k">${esc(H.collection)}</code> collection, after which Firestore is ` +
+      hwSetStatus(`<b>No ${esc(H.noun)}s in the catalog yet.</b> The ${H.seed.length} pulled out of the existing tools are bundled with ` +
+        `this page — seeding writes them to the <code class="k">${esc(H.collection)}</code> collection, after which the catalog is ` +
         'the source of truth. ' +
         `<div class="actions"><button class="btn-primary" id="hwSeed">Seed ${H.seed.length} ${esc(H.noun)}s</button></div>`, 'warn');
       $('hwSeed').onclick = seedHardware;
@@ -2215,7 +2557,7 @@ async function seedHardware() {
     H.loaded = false;
     B.loaded = false; localStorage.removeItem(BROWSE_CACHE);   // Browse lists hardware too
     await loadHardware(true);
-    hwSetStatus(`<b>Seeded.</b> ${H.seed.length} ${esc(H.noun)}s written. Firestore is now the source of truth — edits here overwrite it.`, 'ok');
+    hwSetStatus(`<b>Seeded.</b> ${H.seed.length} ${esc(H.noun)}s staged. Export catalog.js to keep them — edits here overwrite them.`, 'ok');
   } catch (err) {
     hwSetStatus('<b>Seeding failed.</b> ' + esc(err.message) +
       `<br><span class="muted">If this says "permission denied", the rules are blocking writes to <code class="k">${esc(H.collection)}</code>.</span>`, 'err');
@@ -2339,7 +2681,7 @@ function renderHwDetail() {
     // it to resolve. The confirm has to make that distinction, not just shout.
     if (!confirm(
       `Delete "${t.label}" permanently?\n\n` +
-      `This is not the same as deactivating. The definition is removed from Firestore, and any job that ` +
+      `This is not the same as deactivating. The definition is removed from the catalog, and any job that ` +
       `already references it would be left pointing at nothing.\n\n` +
       `Delete only if this was never a real ${H.noun} — otherwise cancel and use Deactivate.`)) return;
     const btn = $('hwDelete'); btn.disabled = true; btn.textContent = 'Deleting…';
@@ -2707,18 +3049,55 @@ $('hwRefresh').onclick = async () => {
    ============================================================ */
 const PLURAL = (n, s) => n.toLocaleString() + ' ' + s + (n === 1 ? '' : 's');
 
+let SAVER = null;   // catalog-folder.js — set up in init()
+
 function renderExportBar() {
   if (!STORE) return;
   const p = STORE.pending();
+  const f = SAVER ? SAVER.state : { supported: false, connected: false };
   const bar = $('exportBar'), state = $('exportState');
   bar.classList.toggle('dirty', p.total > 0);
+  bar.classList.toggle('saved', p.total === 0 && f.connected);
   $('discardDraft').hidden = p.total === 0;
+  $('exportCatalog').hidden = f.connected;
   $('exportCatalog').disabled = p.total === 0;
 
+  /* Folder button: connect, reconnect (the browser drops access between
+     sessions), or the connected folder's name. */
+  const fb = $('folderBtn');
+  fb.classList.toggle('is-connected', f.connected);
+  fb.disabled = !f.supported;
+  $('folderLabel').textContent = !f.supported ? 'Saving to a folder needs Chrome or Edge'
+    : f.connected ? f.path
+    : f.needsPermission && f.dir ? `Reconnect ${f.dir.name}`
+    : 'Connect folder';
+  fb.title = !f.supported ? 'Saving straight to data/catalog.js uses the File System Access API (Chrome or Edge).'
+    : f.connected ? `Autosaving to ${f.path} — click to pick a different folder`
+    : 'Pick the Product Configurator folder. Edits then save straight into data/catalog.js.';
+
+  /* Save state, beside the button. */
+  const ss = $('saveState');
+  ss.classList.toggle('is-dirty', p.total > 0 && f.connected && !f.saving);
+  ss.textContent = !f.connected ? ''
+    : f.conflict ? 'Save paused'
+    : f.saving ? 'Saving…'
+    : p.total ? (f.autosave ? 'Saving…' : 'Autosave off — ⌘S to save')
+    : f.lastSavedAt ? 'Saved ' + new Date(f.lastSavedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : 'Up to date';
+
+  /* Conflict: the file moved underneath this page. */
+  $('saveConflict').hidden = !f.conflict;
+  if (f.conflict) $('saveConflictText').textContent =
+    `On disk it is version ${f.conflict.diskVersion}; this page is working from ${STORE.baselineVersion}. ` +
+    `Someone pulled, committed or saved from another tab. Nothing has been written.`;
+
   if (!p.total) {
-    state.innerHTML = `<span class="muted">Catalog <span class="k">${esc(STORE.baselineVersion)}</span> — ` +
-      `no staged changes. Everything here matches <code class="k">data/catalog.js</code>.</span>`;
-    $('exportDetail').innerHTML = '';
+    state.textContent = f.conflict
+      ? `Catalog ${STORE.baselineVersion} — no edits in this tab, but the file on disk has changed since it loaded.`
+      : f.connected
+      ? `Catalog ${STORE.baselineVersion} — everything here is in data/catalog.js. Commit it to share it with the team.`
+      : `Catalog ${STORE.baselineVersion} — no unsaved changes.`;
+    $('exportDetail').innerHTML = f.error ? `<div class="note err"><b>Could not save.</b> ${esc(f.error)}</div>` : '';
     return;
   }
   const parts = Object.entries(p.byCollection).map(([name, c]) => {
@@ -2728,37 +3107,62 @@ function renderExportBar() {
     if (c.removed) bits.push(c.removed + ' removed');
     return `<b>${esc(name)}</b> ${bits.join(', ')}`;
   });
-  state.innerHTML = `<b>${PLURAL(p.total, 'staged change')}</b> — not saved anywhere yet.`;
+  state.textContent = f.connected
+    ? `${PLURAL(p.total, 'change')} since data/catalog.js was last saved.`
+    : `${PLURAL(p.total, 'unsaved change')} — held in this browser only.`;
 
   /* Removals get their own warning. Job records store these ids, so a removed
      record makes a saved job render "no longer exists in reference data" —
      which is invisible from this screen and only shows up in the configurator. */
   const rem = Object.entries(p.removed || {});
   $('exportDetail').innerHTML =
+    (f.error ? `<div class="note err"><b>Could not save.</b> ${esc(f.error)} Autosave is off — reconnect the folder or press ⌘S.</div>` : '') +
     `<div class="note">${parts.join(' &nbsp;·&nbsp; ')}` +
-    `<br><span class="muted">Staged changes live in this browser only. They reach the team when you ` +
-    `export <code class="k">catalog.js</code>, replace the file in <code class="k">data/</code>, and commit.</span></div>` +
+    (f.connected ? '' : `<br><span class="muted">${f.supported
+        ? 'Connect the Product Configurator folder to save straight into <code class="k">data/catalog.js</code>, or download it and replace the file by hand.'
+        : 'Download <code class="k">catalog.js</code> and replace the file in <code class="k">data/</code>, then commit.'}</span>`) +
+    `</div>` +
     (rem.length ? `<div class="note warn"><b>Removals.</b> ` +
       rem.map(([k, ids]) => `${esc(k)}: <code class="k">${ids.map(esc).join('</code> <code class="k">')}</code>`).join('; ') +
       `<br><span class="muted">Any saved job referencing these will show “no longer exists in reference data”. ` +
       `Deactivating (<code class="k">active: false</code>) keeps old jobs readable; removing does not.</span></div>` : '');
 }
 
+/* No folder (or no Chrome): the old way out — download and replace by hand. */
 $('exportCatalog').onclick = () => {
   const text = STORE.serialize();
   download('catalog.js', text, 'text/javascript');
   const v = STORE.version();
   $('exportDetail').innerHTML =
-    `<div class="note ok"><b>Exported ${esc(v)}.</b> It is in <code class="k">~/Downloads/catalog.js</code>. ` +
+    `<div class="note ok"><b>Downloaded ${esc(v)}.</b> It is in <code class="k">~/Downloads/catalog.js</code>. ` +
     `Move it to <code class="k">Product Configurator/data/catalog.js</code>, then ` +
     `<code class="k">git add data/catalog.js &amp;&amp; git commit</code>.` +
-    `<br><span class="muted">Staged changes stay staged until you reload this page against the new file — ` +
-    `so you can keep editing and re-export.</span></div>`;
+    `<br><span class="muted">Unsaved changes stay held in this browser until you reload against the new file.</span></div>`;
 };
+
+$('folderBtn').onclick = () => SAVER && SAVER.connect({ pick: SAVER.state.connected });
+$('conflictReload').onclick = () => {
+  if (!confirm('Reload with the file on disk? Unsaved changes in this tab are discarded.')) return;
+  STORE.discardDraft(); location.reload();
+};
+$('conflictOverwrite').onclick = () => SAVER && SAVER.overwrite();
+
+/* ⌘S saves now; with no folder it downloads, like the PM tool. */
+document.addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return;
+  e.preventDefault();
+  if (SAVER && SAVER.state.connected) SAVER.saveNow();
+  else if (STORE && STORE.pending().total) $('exportCatalog').click();
+});
+window.addEventListener('beforeunload', e => {
+  if (SAVER && SAVER.state.connected && STORE && STORE.pending().total) {
+    SAVER.flush(); e.preventDefault(); e.returnValue = '';
+  }
+});
 
 $('discardDraft').onclick = () => {
   const p = STORE.pending();
-  if (!confirm(`Discard ${PLURAL(p.total, 'staged change')} and go back to catalog ${STORE.baselineVersion}?`)) return;
+  if (!confirm(`Discard ${PLURAL(p.total, 'unsaved change')} and go back to catalog ${STORE.baselineVersion}?`)) return;
   STORE.discardDraft();
   B.loaded = false; H.loaded = false; DEPTS.loaded = false; ESC.loaded = false;
   location.reload();
@@ -2769,11 +3173,15 @@ $('discardDraft').onclick = () => {
    resurrecting or silently dropping someone's staged edits are both bad. Say
    which happened. */
 (async function init() {
-  const saved = localStorage.getItem(CFG_KEY);
-  try { $('cfgText').value = saved || JSON.stringify(DEFAULT_CFG, null, 2); } catch {}
-  setCfgStatus(true, 'file: data/catalog.js');
-
   const { draft } = await connect();
+  SAVER = createCatalogSaver({
+    serialize: () => STORE.serialize(),
+    baseVersion: () => STORE.baselineVersion,
+    rebase: () => STORE.rebase(),
+    isDirty: () => STORE.pending().total > 0,
+    onState: renderExportBar,
+  });
+  await SAVER.restore();
   if (draft && draft.stale) {
     $('exportDetail').innerHTML =
       `<div class="note warn"><b>A draft from an older catalog was discarded.</b> ` +
@@ -2787,5 +3195,40 @@ $('discardDraft').onclick = () => {
   loadBrowse(); // Browse is the landing view, so populate it immediately
 })();
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     IMPLEMENTATION NOTES — Edit materials grid + saving
+     ──────────────────────────────────────────────────────────────
+     Components → markup and styles
+       SaveBar          → .exportbar #exportBar, #folderBtn, #saveState;
+                          .save-* styles in the page <style>
+       SaveConflict     → #saveConflict (.note.warn)
+       MaterialsEditor  → <section id="matEditor">; .materials-editor__* styles
+       CategoryTabs     → #matCatTabs, shared .tab-btn in a .tab-row
+       GridToolbar      → .materials-editor__toolbar (search, inactive, count)
+       DataGrid         → #matGrid host + components/data-grid/data-grid.css;
+                          dg*Template <template>s above the script
+       CsvImport        → #csvImport — the original four-step wizard, unchanged
+
+     Behavior → where it lives
+       Grid interactions (select, edit, type-ahead, fill, copy/paste,
+         menus, toast)  → components/data-grid/data-grid.js, ported from
+                          Platinum/Rollout Manager/rollout-manager.html
+       Materials model  → matModel() / matApply() in the MATERIALS EDITOR block
+       Undo / redo      → matBegin / matCommit / matUndo (materials only)
+       Saving           → catalog-folder.js: folder handle in IndexedDB,
+                          autosave to data/catalog.js, version conflict check;
+                          catalog-store.js rebase() makes the saved file the
+                          new baseline
+
+     Simulated in JS, becomes Angular state / services
+       - Table build in data-grid.js → @for over rows and cols
+       - Selection, editing           → signals on the grid component
+       - Category, search, inactive   → signals; matModel() → computed
+       - Column sort                  → matSort(): a { key, dir } signal; the
+                                        order is fixed at click time
+       - History                      → a history service over the store
+       - File System Access saving    → replaced by the real API
+     ══════════════════════════════════════════════════════════════ -->
 </body>
 </html>

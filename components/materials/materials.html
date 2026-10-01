@@ -1,0 +1,231 @@
+<!--
+  MATERIALS SECTION — markup for the shared Exterior / Interior materials tables.
+
+  Used by mcs/index.html and blc/planner.html. materials.js loads this file into
+  a host element and wires behavior; materials.css styles it. Nothing here is
+  page-specific: the BLC-only Qty and Unit columns are hidden by CSS unless the
+  page mounts with { showQty: true }.
+
+  Anything with a data-action is a button the script listens for; data-role
+  marks an input or select whose value is part of the saved state.
+  Templates at the bottom are the pieces cloned for each row, field or card.
+-->
+
+<!-- Materials: start -->
+<div class="materials">
+
+  <div class="materials__catalog-warning" data-role="catalog-warning" hidden>
+    <b>The material catalog didn't load.</b> Categories and autocomplete come from
+    <code>data/catalog.js</code>, which browsers block when a page is opened as a file.
+    Serve the Product Configurator folder over http (for example with VS Code Live Server) and reload.
+  </div>
+
+  <!-- Exterior materials -->
+  <div class="materials__group" data-sec="ext">
+    <table class="materials__table">
+      <thead>
+        <tr>
+          <th class="materials__col-num">#</th>
+          <th class="materials__col-cat">Exterior</th>
+          <th>Material</th>
+          <th class="materials__col-fn">Function</th>
+          <th class="materials__col-qty">Qty</th>
+          <th class="materials__col-unit">Unit</th>
+          <th class="materials__col-rm"></th>
+        </tr>
+      </thead>
+      <tbody data-rows="ext"></tbody>
+    </table>
+    <div class="materials__actions">
+      <button type="button" class="materials__add" data-action="add-row" data-sec="ext">+ Exterior Material</button>
+    </div>
+  </div>
+  <!-- /Exterior materials -->
+
+  <!-- Interior materials -->
+  <div class="materials__group" data-sec="int">
+    <table class="materials__table">
+      <thead>
+        <tr>
+          <th class="materials__col-num">#</th>
+          <th class="materials__col-cat">Interior</th>
+          <th>Material</th>
+          <th class="materials__col-fn">Function</th>
+          <th class="materials__col-qty">Qty</th>
+          <th class="materials__col-unit">Unit</th>
+          <th class="materials__col-rm"></th>
+        </tr>
+      </thead>
+      <tbody data-rows="int"></tbody>
+    </table>
+    <div class="materials__actions">
+      <button type="button" class="materials__add" data-action="add-row" data-sec="int">+ Interior Material</button>
+      <button type="button" class="materials__add" data-action="add-cc-interior" data-role="cc-add">+ Standard Check Presenter Interior</button>
+    </div>
+  </div>
+  <!-- /Interior materials -->
+
+  <!-- Function cards: one per checked interior Function, plus the Standard CC Interior -->
+  <div class="materials__fn-cards" data-role="fn-cards"></div>
+
+</div>
+<!-- /Materials -->
+
+
+<!-- =========================== TEMPLATES =========================== -->
+
+<datalist id="materials-dl-ext-function">
+  <option value="Full Wrap">
+  <option value="Front Cover">
+  <option value="Back Cover">
+  <option value="Front &amp; Back Cover">
+  <option value="Sailcloth Reveal">
+</datalist>
+
+<!-- Exterior row: Function is free text with suggestions -->
+<template data-tpl="row-ext">
+  <tr class="materials__row">
+    <td class="materials__col-num"></td>
+    <td class="materials__col-cat">
+      <select class="materials__cat" data-role="category"><option value="">—</option></select>
+    </td>
+    <td class="materials__col-material">
+      <div class="materials__fields" data-role="fields"></div>
+      <span class="materials__print" data-role="print"></span>
+    </td>
+    <td class="materials__col-fn">
+      <input type="text" class="materials__function" data-role="function" list="materials-dl-ext-function">
+    </td>
+    <td class="materials__col-qty"><input type="text" class="materials__qty" data-role="qty" inputmode="numeric" placeholder="0"></td>
+    <td class="materials__col-unit">
+      <select class="materials__unit" data-role="unit">
+        <option value="">Unit</option>
+        <option value="yards">Yards</option>
+        <option value="meters">Meters</option>
+      </select>
+    </td>
+    <td class="materials__col-rm"><button type="button" class="materials__rm" data-action="remove-row" title="Remove">&times;</button></td>
+  </tr>
+</template>
+
+<!-- Interior row: Function is a multi-select -->
+<template data-tpl="row-int">
+  <tr class="materials__row">
+    <td class="materials__col-num"></td>
+    <td class="materials__col-cat">
+      <select class="materials__cat" data-role="category"><option value="">—</option></select>
+    </td>
+    <td class="materials__col-material">
+      <div class="materials__fields" data-role="fields"></div>
+      <span class="materials__print" data-role="print"></span>
+    </td>
+    <td class="materials__col-fn">
+      <div class="materials__msd" data-role="functions" data-placeholder="Function">
+        <button type="button" class="materials__msd-btn" data-action="msd-toggle">
+          <span class="materials__msd-val">Function</span>
+          <span class="materials__msd-caret">▾</span>
+        </button>
+        <div class="materials__msd-panel" hidden>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Liner"> Liner</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Panels"> Panels</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Pockets"> Pockets</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="CC Slot"> CC Slot</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Pen Loop"> Pen Loop</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Corners"> Corners</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Tabs"> Tabs</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Other"> Other</label>
+        </div>
+      </div>
+    </td>
+    <td class="materials__col-qty"><input type="text" class="materials__qty" data-role="qty" inputmode="numeric" placeholder="0"></td>
+    <td class="materials__col-unit">
+      <select class="materials__unit" data-role="unit">
+        <option value="">Unit</option>
+        <option value="yards">Yards</option>
+        <option value="meters">Meters</option>
+      </select>
+    </td>
+    <td class="materials__col-rm"><button type="button" class="materials__rm" data-action="remove-row" title="Remove">&times;</button></td>
+  </tr>
+</template>
+
+<!-- Material cell: shown until a category is chosen -->
+<template data-tpl="fields-empty">
+  <div class="materials__fields-empty">Select a category</div>
+</template>
+
+<!-- Material cell: one text input per catalog field -->
+<template data-tpl="field">
+  <input type="text" class="materials__field" data-role="field">
+</template>
+
+<!-- Material cell: Decoration. The + is only enabled when Vendor is Majilite. -->
+<template data-tpl="decoration">
+  <div class="materials__decor">
+    <button type="button" class="materials__decor-btn" data-action="decor-open" title="Decoration only available for Majilite" disabled>+ Decoration</button>
+    <input type="text" class="materials__field materials__decor-input" data-role="field" data-field-id="decoration" placeholder="Decoration" hidden>
+    <button type="button" class="materials__decor-dismiss" data-action="decor-close" title="Remove Decoration" hidden>&times;</button>
+  </div>
+</template>
+
+<!-- Function cards (one template per interior Function) -->
+<template data-tpl="fn-Liner">
+  <div class="materials__fn-card" data-fn="Liner">
+    <span class="materials__fn-title">Liner</span>
+    <label class="materials__fn-field"><span class="materials__fn-label">Location</span><input type="text" class="materials__fn-input" data-fn-field="location"></label>
+    <label class="materials__fn-field"><span class="materials__fn-label">Size</span><input type="text" class="materials__fn-input" data-fn-field="size"></label>
+  </div>
+</template>
+
+<template data-tpl="fn-Panels">
+  <div class="materials__fn-card" data-fn="Panels">
+    <span class="materials__fn-title">Panels</span>
+    <label class="materials__fn-field"><span class="materials__fn-label">Location</span><input type="text" class="materials__fn-input" data-fn-field="location"></label>
+    <label class="materials__fn-field"><span class="materials__fn-label">Size</span><input type="text" class="materials__fn-input" data-fn-field="size"></label>
+  </div>
+</template>
+
+<template data-tpl="fn-Pockets">
+  <div class="materials__fn-card" data-fn="Pockets">
+    <span class="materials__fn-title">Pockets</span>
+    <label class="materials__fn-field"><span class="materials__fn-label">Size</span><input type="text" class="materials__fn-input" data-fn-field="size"></label>
+    <div class="materials__fn-field">
+      <span class="materials__fn-label">Type</span>
+      <div class="materials__msd materials__msd--single" data-fn-field="type" data-placeholder="None Selected">
+        <button type="button" class="materials__msd-btn" data-action="msd-toggle">
+          <span class="materials__msd-val">None Selected</span>
+          <span class="materials__msd-caret">▾</span>
+        </button>
+        <div class="materials__msd-panel" hidden>
+          <label class="materials__msd-opt" tabindex="-1"><input type="radio" value="Angled"> Angled</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="radio" value="Flat"> Flat</label>
+          <label class="materials__msd-opt" tabindex="-1"><input type="radio" value="CC"> CC</label>
+        </div>
+      </div>
+    </div>
+    <label class="materials__fn-field"><span class="materials__fn-label">Location</span><input type="text" class="materials__fn-input" data-fn-field="location"></label>
+  </div>
+</template>
+
+<template data-tpl="fn-CC Slot">
+  <div class="materials__fn-card" data-fn="CC Slot">
+    <span class="materials__fn-title">CC Slot</span>
+    <label class="materials__fn-field"><span class="materials__fn-label">Location</span><input type="text" class="materials__fn-input" data-fn-field="location"></label>
+  </div>
+</template>
+
+<template data-tpl="fn-Pen Loop">
+  <div class="materials__fn-card" data-fn="Pen Loop">
+    <span class="materials__fn-title">Pen Loop</span>
+    <label class="materials__fn-field"><span class="materials__fn-label">Location</span><input type="text" class="materials__fn-input" data-fn-field="location"></label>
+  </div>
+</template>
+
+<!-- Standard Check Presenter interior -->
+<template data-tpl="cc-interior">
+  <div class="materials__fn-card materials__fn-card--cc" data-cc-int>
+    <span class="materials__fn-title">Standard CC Interior</span>
+    <div class="materials__cc-text">Black Lexide Panel<br>Regular Black Angled Pocket<br>CC Slot</div>
+    <button type="button" class="materials__rm materials__rm--card" data-action="remove-cc-interior" title="Remove">&times;</button>
+  </div>
+</template>

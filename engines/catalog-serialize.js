@@ -3,11 +3,10 @@
    ---------------------------------------------------------------------
    Turns catalog data into the text of data/catalog.js.
 
-   THIS FILE IS SHARED ON PURPOSE. export-catalog.html and
-   material-import.html both write the catalog file, and if each carried
-   its own copy of this logic they would drift — which is precisely how
-   this project ended up with three divergent hardware configs and two
-   incompatible material vocabularies. One serialiser, two callers.
+   Kept out of material-import.html on purpose, so any future caller
+   reuses this instead of carrying its own copy. Copies drift — which is
+   precisely how this project ended up with three divergent hardware
+   configs and two incompatible material vocabularies.
 
    THE INVARIANT: identical data must produce identical bytes. Records are
    sorted by id, object keys are sorted, and nothing is derived from the
@@ -15,12 +14,12 @@
    an export that violates it makes the version history worthless.
    ===================================================================== */
 
-// Firestore write metadata. Stripped — it would churn every record on every
+// Write metadata. Stripped — it would churn every record on every
 // export and bury the real changes.
 export const DROP_FIELDS = new Set(['createdAt', 'updatedAt', 'importedAt', 'lastEditedAt']);
 
 /* Recursively drop metadata, strip undefined, sort object keys.
-   Firestore Timestamps (and our serverTimestamp sentinel) collapse to null
+   Timestamp objects (and the store's serverTimestamp sentinel) collapse to null
    and are then dropped by the key filter above. */
 export function clean(v) {
   if (Array.isArray(v)) return v.map(clean);
@@ -82,7 +81,7 @@ export function emit(d) {
    Records are sorted by id and keys are sorted, and nothing here is derived
    from the clock, so an unchanged catalog re-exports BYTE-IDENTICAL. An empty
    git diff therefore means nothing changed, and the commit date is the export
-   date. Firestore write metadata (createdAt / updatedAt) is stripped on
+   date. Write metadata (createdAt / updatedAt) is stripped on
    purpose — it would churn every record on every export and bury the real
    changes.
    ===================================================================== */

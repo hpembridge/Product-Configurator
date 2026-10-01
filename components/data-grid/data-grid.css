@@ -1,0 +1,378 @@
+/* =====================================================================
+   DATA GRID — styles for components/data-grid/data-grid.js
+   ---------------------------------------------------------------------
+   Carried over from the Rollout Manager grid (rollout-manager.css:
+   "Grid" through "Toast"), same values and class names. Table rules
+   are scoped under .data-grid so the host page's own table styles
+   (Reference Data has global table / thead th / tbody td rules) don't
+   reach in. The menu, type-ahead list and toast sit on <body>.
+
+   Every value comes from shared/css/design-tokens.css. The LOCAL
+   TOKENS block below holds the gaps, each mapped to a primitive or
+   semantic token — the same gaps the Rollout Manager flagged:
+     --shadow-menu        no shadow token for menus
+     --duration-fast      no motion tokens yet
+     --dg-danger-text     no destructive-text token (copper-600 stands in)
+     --dg-toast-action    no on-inverse link token
+     --dg-rowhead-width   grid geometry, off the 4px scale
+   ===================================================================== */
+
+/* ── Local tokens ─────────────────────────────────────────────── */
+:root {
+  --shadow-menu: 0 8px 24px rgb(from var(--color-black) r g b / .16);
+  --duration-fast: .15s;
+
+  --dg-danger-text: var(--color-copper-600);
+  --dg-danger-bg: var(--status-error-bg);
+
+  /* An icon button (28px) in a cell pulls in by this much top and
+     bottom so it fits the text line. */
+  --dg-cell-icon-pull: calc((var(--line-height-body-sm) - var(--scale-700)) / 2);
+  --dg-rowhead-width: 150px;
+
+  --dg-head-bg: var(--bg-subtle);
+  --dg-head-bg-hover: color-mix(in srgb, var(--interactive-default) 12%, var(--bg-subtle));
+  --dg-head-bg-selected: color-mix(in srgb, var(--interactive-default) 18%, var(--bg-surface));
+  --dg-rowhead-bg: var(--bg-muted);
+  --dg-row-hover-bg: color-mix(in srgb, var(--interactive-default) 6%, var(--bg-surface));
+  --dg-blank-bg: var(--bg-muted);
+
+  --dg-sel-bg: var(--interactive-bg-subtle);
+  --dg-sel-edge: var(--interactive-default);
+
+  --dg-toast-action: var(--color-patina-200);
+  --dg-placeholder-text: var(--color-titanium-700);
+}
+
+/* ══ Grid ═══════════════════════════════════════════════════════
+   .data-grid is the scroller; the table inside runs as wide as its
+   columns. No top padding: a sticky header sticks to the scrollport,
+   so padding there leaves a strip where rows show above the header.
+   ───────────────────────────────────────────────────────────── */
+.data-grid {
+  overflow: auto;
+  max-height: 640px;
+  position: relative;
+  border-radius: var(--border-radius-md);
+}
+
+.data-grid table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-surface);
+  table-layout: fixed;
+  width: auto;
+  min-width: max-content;   /* columns keep their declared width */
+  font-size: var(--fontsize-body-sm);
+}
+.data-grid col.col-rowhead { width: var(--dg-rowhead-width); }
+
+.data-grid th,
+.data-grid td {
+  border-right: 1px solid var(--border-tertiary);
+  border-bottom: 1px solid var(--border-tertiary);
+  padding: var(--scale-200);
+  text-align: left;
+  font-weight: var(--font-weight-light);
+  font-size: var(--fontsize-body-sm);
+  vertical-align: middle;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Head ─────────────────────────────────────────────────────── */
+.data-grid thead { position: sticky; top: 0; z-index: 3; }
+.data-grid thead th {
+  position: static;
+  background: var(--dg-head-bg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: normal;
+  border-top: 1px solid var(--border-tertiary);
+  white-space: nowrap;
+}
+.data-grid thead th:first-child { position: sticky; left: 0; z-index: 5; border-left: 1px solid var(--border-tertiary); }
+.data-grid thead tr:last-child th { box-shadow: 0 1px 0 var(--border-default); }
+.data-grid thead th.hd-num .cellpad { justify-content: flex-end; }
+.data-grid thead th.hd-num .hd-label { flex: none; }
+.data-grid thead th.hd-bool .cellpad { justify-content: center; }
+.data-grid thead th.hd-bool .hd-label { flex: none; }
+
+.data-grid tbody th {
+  background: var(--dg-rowhead-bg);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-left: 1px solid var(--border-tertiary);
+}
+
+/* The cell carries the padding; .cellpad and .val only lay out. */
+.data-grid .cellpad {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-grid th .cellpad { display: flex; align-items: center; gap: var(--scale-100); }
+
+/* ── Header interactions ──────────────────────────────────────
+   Hovering a row header tints its whole row and shows its delete
+   button. Every column header is pinned here: a material category's
+   columns are its schema, in schema order. */
+.data-grid .hd { user-select: none; }
+.data-grid tbody th.hd { cursor: default; }
+.data-grid tbody th.hd:hover { background: var(--dg-head-bg-hover); }
+.data-grid tbody tr:has(> th.hd:hover) > td.cell:not(.sel) { background: var(--dg-row-hover-bg); }
+.data-grid thead th.hd-pinned { cursor: default; }
+
+/* Sortable header: click cycles A→Z, Z→A, default order. The icon is
+   always there (faint) so the header reads as clickable; the sorted
+   column's icon is full strength. */
+.data-grid thead th.hd-sort { cursor: pointer; }
+.data-grid thead th.hd-sort:hover { background: var(--dg-head-bg-hover); }
+.data-grid .hd-sort-icon {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-tertiary);
+  font-size: var(--fontsize-label);
+  opacity: .5;
+  transition: opacity var(--duration-fast) ease;
+}
+.data-grid thead th.hd-sort:hover .hd-sort-icon { opacity: 1; }
+.data-grid thead th.is-sorted .hd-sort-icon { opacity: 1; color: var(--text-interactive); }
+.data-grid thead th.hd-num .hd-sort-icon,
+.data-grid thead th.hd-bool .hd-sort-icon { margin-left: 0; }
+.data-grid thead th.hd-sel,
+.data-grid tbody th.hd-sel { background: var(--dg-head-bg-selected); }
+
+.data-grid .hd-label { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.data-grid .sub {
+  color: var(--text-tertiary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--fontsize-label);
+}
+
+/* Row header button — the shared .icon-btn at the trailing edge,
+   revealed on row-header hover or keyboard focus. */
+.data-grid .hd-action { flex: none; margin-block: var(--dg-cell-icon-pull); opacity: 0; }
+.data-grid tbody th.hd .cellpad { overflow: visible; }
+.data-grid tbody th.hd:hover .hd-action,
+.data-grid .hd-action:focus-visible { opacity: 1; }
+.data-grid .hd-action:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
+
+/* ── Data cells ─────────────────────────────────────────────── */
+.data-grid td.cell { cursor: cell; background: var(--bg-surface); }
+.data-grid td.cell .val {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-grid td.num .val { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.data-grid td.is-empty .val::before { content: "—"; color: var(--border-subtle); }
+.data-grid td.blank { background: var(--dg-blank-bg); cursor: default; }
+.data-grid td.readonly { background: var(--bg-muted); }
+.data-grid td.readonly .val { color: var(--text-secondary); }
+
+/* An inactive material: hidden from the picker, kept for old jobs. */
+.data-grid tr.row-inactive td.cell .val,
+.data-grid tr.row-inactive th.hd .hd-label { color: var(--text-tertiary); }
+.data-grid tr.row-inactive th.hd .hd-label { text-decoration: line-through; }
+
+/* ── Checkbox cell ──────────────────────────────────────────────
+   The control IS the cell: click it, or Space / Enter on it. */
+.data-grid td.bool .val { justify-content: center; height: 100%; }
+.data-grid .cell-check {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--interactive-default);
+  cursor: pointer;
+}
+
+/* ── Selection ──────────────────────────────────────────────────
+   Tint on every cell in the range, a 2px edge on the outer sides
+   (the e-* classes), and a fill handle on the bottom-right. */
+.data-grid td.sel { background: var(--dg-sel-bg); }
+.data-grid td.anchor { background: var(--bg-surface); }
+.data-grid td.e-t { box-shadow: inset 0 2px 0 -0.5px var(--dg-sel-edge); }
+.data-grid td.e-b { box-shadow: inset 0 -2px 0 -0.5px var(--dg-sel-edge); }
+.data-grid td.e-l { box-shadow: inset 2px 0 0 -0.5px var(--dg-sel-edge); }
+.data-grid td.e-r { box-shadow: inset -2px 0 0 -0.5px var(--dg-sel-edge); }
+.data-grid td.e-t.e-l { box-shadow: inset 0 2px 0 -.5px var(--dg-sel-edge), inset 2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-t.e-r { box-shadow: inset 0 2px 0 -.5px var(--dg-sel-edge), inset -2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-b.e-l { box-shadow: inset 0 -2px 0 -.5px var(--dg-sel-edge), inset 2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-b.e-r { box-shadow: inset 0 -2px 0 -.5px var(--dg-sel-edge), inset -2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-t.e-b.e-l.e-r { box-shadow: inset 0 0 0 2px var(--dg-sel-edge); }
+.data-grid td.e-t.e-l.e-r { box-shadow: inset 0 2px 0 -.5px var(--dg-sel-edge), inset 2px 0 0 -.5px var(--dg-sel-edge), inset -2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-b.e-l.e-r { box-shadow: inset 0 -2px 0 -.5px var(--dg-sel-edge), inset 2px 0 0 -.5px var(--dg-sel-edge), inset -2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-t.e-b.e-l { box-shadow: inset 0 2px 0 -.5px var(--dg-sel-edge), inset 0 -2px 0 -.5px var(--dg-sel-edge), inset 2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-t.e-b.e-r { box-shadow: inset 0 2px 0 -.5px var(--dg-sel-edge), inset 0 -2px 0 -.5px var(--dg-sel-edge), inset -2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-t.e-b { box-shadow: inset 0 2px 0 -.5px var(--dg-sel-edge), inset 0 -2px 0 -.5px var(--dg-sel-edge); }
+.data-grid td.e-l.e-r { box-shadow: inset 2px 0 0 -.5px var(--dg-sel-edge), inset -2px 0 0 -.5px var(--dg-sel-edge); }
+.data-grid td.fillpreview { box-shadow: inset 0 0 0 1px var(--interactive-pressed); }
+
+.data-grid .handle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  right: -4px;
+  bottom: -4px;
+  background: var(--dg-sel-edge);
+  border: 1px solid var(--bg-surface);
+  border-radius: var(--scale-25);
+  cursor: crosshair;
+  z-index: 6;
+}
+
+/* ── Cell editor ────────────────────────────────────────────────
+   One input, mounted into the cell being edited (and into the add
+   row for a new entry). */
+.data-grid .editor {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--interactive-default);
+  border-radius: 0;
+  padding: 0 calc(var(--scale-200) - 2px);   /* text stays where it sat */
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  z-index: 7;
+  outline: none;
+  box-shadow: none;
+}
+.data-grid td.num .editor { text-align: right; }
+.data-grid .editor::placeholder { color: var(--dg-placeholder-text); opacity: 1; }
+.data-grid .editor--invalid { border-color: var(--dg-danger-text); }
+
+/* ── Add row ──────────────────────────────────────────────────── */
+.data-grid th.add {
+  background: var(--interactive-bg-subtle);
+  color: var(--text-interactive);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.data-grid th.add:hover { background: color-mix(in srgb, var(--interactive-default) 14%, var(--bg-surface)); }
+.data-grid th.add .editor { color: var(--text-primary); font-weight: var(--font-weight-light); }
+
+/* ══ Type-ahead list ═════════════════════════════════════════════
+   Under the cell being edited, on <body> because a cell clips. */
+.ac {
+  position: fixed;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  padding: var(--scale-100);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-menu);
+  max-height: 220px;
+  overflow: auto;
+}
+.ac.open { display: flex; }
+.ac button {
+  appearance: none;
+  border: 0;
+  background: none;
+  text-align: left;
+  white-space: nowrap;
+  padding: var(--scale-200) var(--scale-300);
+  border-radius: var(--border-radius-sm);
+  font: inherit;
+  font-size: var(--fontsize-body-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ac button:hover,
+.ac button.is-active { background: var(--interactive-bg-subtle); }
+
+/* ══ Context menus ═══════════════════════════════════════════════ */
+.menu {
+  position: fixed;
+  z-index: 50;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-menu);
+  padding: var(--scale-100);
+  min-width: 210px;
+  max-width: 320px;
+  max-height: 60vh;
+  overflow: auto;
+  font-size: var(--fontsize-body-sm);
+}
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  padding: var(--scale-100) var(--scale-200);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.menu button:hover { background: var(--interactive-bg-subtle); }
+.menu button.danger { color: var(--dg-danger-text); }
+.menu button.danger:hover { background: var(--dg-danger-bg); }
+.menu .mlabel {
+  padding: var(--scale-100) var(--scale-200) var(--scale-50);
+  color: var(--text-secondary);
+  font-size: var(--fontsize-label);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: var(--font-weight-semibold);
+}
+.menu hr { border: 0; border-top: 1px solid var(--border-tertiary); margin: var(--scale-100) 0; }
+.menu .mnote {
+  padding: var(--scale-50) var(--scale-200) var(--scale-200);
+  color: var(--text-tertiary);
+  font-size: var(--fontsize-label);
+  line-height: var(--line-height-body-sm);
+}
+
+/* ══ Toast ═══════════════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--scale-1600);
+  transform: translateX(-50%);
+  background: var(--bg-inverse);
+  color: var(--text-on-dark);
+  padding: var(--scale-200) var(--scale-300);
+  border-radius: var(--border-radius-md);
+  z-index: 60;
+  font-size: var(--fontsize-body-sm);
+  box-shadow: var(--shadow-menu);
+  display: flex;
+  gap: var(--scale-300);
+  align-items: center;
+}
+.toast__action {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: var(--dg-toast-action);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: dg-rise .16s ease-out; }
+  @keyframes dg-rise {
+    from { opacity: 0; transform: translate(-50%, 6px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+}

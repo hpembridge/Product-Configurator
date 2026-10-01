@@ -5,6 +5,7 @@
 
 import { computeTier as newTier, inferDepartments as newDepts,
          qualifierHolds as newQual, addWorkdays as newAddWorkdays } from './lead-time.js';
+import { nameVariants } from './catalog.js';
 import { effOffset as newEffOffset, cutSize as newCutSize,
          panelCap as newPanelCap, trimNum, OFFSET_DEFAULTS } from './geometry.js';
 
@@ -237,6 +238,19 @@ for (const [start, days] of [['2026-08-07', 1], ['2026-08-07', 15], ['2026-08-10
 
 console.log('\nOFFSET_DEFAULTS table identical');
 check('defaults', OLD_OFFSET_DEFAULTS, OFFSET_DEFAULTS);
+
+/* Not a port — the name-variant rules decided 2026-10-01 (catalog.js). */
+console.log('\nNAME VARIANTS');
+const nv = m => nameVariants(m).variants.map(v => v.family + ' + ' + v.color);
+check('pairs by position', nv({ family: 'Allure / Pearl Linen', color: 'Wheat / Prairie Wheat' }),
+  ['Allure + Wheat', 'Pearl Linen + Prairie Wheat']);
+check('single name goes with each', nv({ family: 'Allure / Arrestox', color: 'Paprika' }),
+  ['Allure + Paprika', 'Arrestox + Paprika']);
+check('bare slash is not a split', nv({ family: 'Sideral', color: 'E266/M' }), ['Sideral + E266/M']);
+check('nothing to split', nv({ family: 'Tampa', color: 'Desert Sand' }), ['Tampa + Desert Sand']);
+check('mismatch left whole', nameVariants({ family: 'A / B', color: 'x / y / z' }).mismatch, { family: 2, color: 3 });
+check('variants keep the id', nameVariants({ id: 'bookcloth__lbs__211', family: 'A / B', color: 'x / y' }).variants.map(v => v.id),
+  ['bookcloth__lbs__211', 'bookcloth__lbs__211']);
 
 console.log(`\n${fail === 0 ? '✓ ALL MATCH' : '✗ DIVERGENCE'} — ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

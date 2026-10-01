@@ -14,7 +14,7 @@
 
    `ref` shape:
      offsets   { [hardwareTypeId]: { vertical: Number, horizontal: Number } }
-               (Firestore settings/offsets → byBindingType; absent is fine)
+               (catalog offsets → byBindingType; absent is fine)
    ===================================================================== */
 
 /* Lifted from BC-00 (bindery-calculator.js state.settings.offsets).

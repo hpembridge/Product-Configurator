@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preproduction — Planner</title>
+  <script src="https://kit.fontawesome.com/da08280601.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="../components/materials/materials.css">
+  <style>
+    body { font-size: 12px; }
+
+    /* ── PLANNER CARD INTERNALS ── */
+    .btype { margin-right: 20px; /* room for × button */ }
+
+    .card-field { display: flex; flex-direction: column; gap: 3px; }
+    .card-field .box        { width: 100%; height: 26px; }
+    .card-field .cat-select { width: 100%; }
+    .card-field-row         { display: flex; gap: 6px; }
+    .card-field-row .card-field { flex: 1; }
+
+    .hw-inline { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+
+    /* ── MATERIALS TABLE ── */
+    .mat-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+    .mat-table th {
+      text-align: left;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--gray-300);
+      padding: 0 6px 5px;
+      white-space: nowrap;
+    }
+    .mat-table td {
+      padding: 5px 6px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--gray-75);
+    }
+    .mat-row:last-child td { border-bottom: none; }
+    .col-type  { width: 130px; }
+    .col-qty   { width: 68px; }
+    .col-unit  { width: 88px; }
+    .col-rm    { width: 26px; }
+    .mat-type-select { width: 100%; height: 26px; }
+    .mat-qty { width: 100%; height: 26px; text-align: right; }
+    .mat-unit { width: 100%; height: 26px; }
+    .fields-cell {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .fields-cell .fl-wrap { flex: 1; min-width: 60px; }
+    .fields-empty {
+      height: 26px;
+      border: 1.5px solid var(--gray-75);
+      border-radius: 2px;
+      background: var(--gray-10);
+      padding: 0 7px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      color: var(--gray-200);
+      font-style: normal;
+      flex: 1;
+    }
+
+    /* Shared materials component picks up the BLC gold as its accent */
+    /* "Show function column" toggle, right end of the job details row */
+    .fn-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding-bottom: 7px; }
+    .fn-toggle input { accent-color: var(--ink); margin: 0; }
+
+    #materials-mount { --accent: var(--gold); --muted: #737373; --surface: #e2e2e2; --status-red: #fc6251; }
+
+    /* ── DEPARTMENT TOGGLE (active state) ── */
+    .dept-toggle.active       { background: var(--ink);      color: #fff; border-color: var(--ink); }
+    .dept-toggle.active:hover { background: var(--gray-700); color: #fff; border-color: var(--gray-700); }
+
+    /* ── DUE DATE BOX sizing (planner variant — wider) ── */
+    .due-date-box { min-width: 150px; flex-shrink: 0; }
+
+    /* ── EXPORT STATUS ── */
+    #export-status {
+      font-size: 10px;
+      color: var(--gold-dark);
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: var(--gold-tint);
+      display: none;
+    }
+
+    /* ── MCS DROP OVERLAY (same as the MCS's drop overlay) ── */
+    .drop-overlay {
+      position: fixed;
+      inset: 0;
+      background: color-mix(in srgb, var(--gold) 12%, transparent);
+      border: 4px dashed var(--gold);
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .drop-overlay[hidden] { display: none; }
+    .drop-overlay-box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 36px 56px;
+      text-align: center;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+    }
+    .drop-overlay-box p {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .drop-overlay-box small {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #888;
+    }
+    #export-status.is-visible { display: inline-block; }
+
+    /* ── ACTIVE DRAFTS PANEL ── */
+    #planner-active-jobs {
+      display: none;
+      width: 8.5in;
+      margin: auto;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    #planner-active-jobs-list { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0; }
+    .new-draft-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: none; border: 1px dashed var(--gray-200);
+      border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; margin: 3px;
+      color: var(--gray-300); transition: border-color .15s, color .15s;
+    }
+    .new-draft-btn:hover { border-color: var(--section-label); color: var(--ink); }
+    
+    .job-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gray-25); border: 1px solid var(--gray-100);
+      border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; margin: 3px;
+      transition: background .15s;
+    }
+    .job-chip:hover   { background: var(--section-bg); border-color: var(--section-label); }
+    .job-chip.active  { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .job-chip.active:hover { background: var(--gray-700); border-color: var(--gray-700); }
+    .job-chip.active .phase-draft { background: rgba(255,255,255,.18); color: #fff; }
+    .job-chip-id      { font-weight: 700; }
+    .job-chip-phase {
+      font-size: 9px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; padding: 1px 5px; border-radius: 8px;
+    }
+    .phase-draft { background: var(--gold-tint); color: var(--gold-dark); }
+    .chip-dismiss {
+      background: none; border: none; padding: 0; margin-left: 2px;
+      cursor: pointer; opacity: .45; font-size: 10px; line-height: 1;
+      color: inherit;
+    }
+    .chip-dismiss:hover { opacity: 1; }
+
+    /* ── SCREEN: hide print-only elements ── */
+    #stateEmbed { display: none; }
+    .print-date { display: none; }
+    .print-stage-banner { display: none; }
+    /* ── Print view: item lists (materials, hardware) ──────
+       One line per item: number, the item's values run together, the
+       per-each math (hardware), and the total quantity, emphasised. */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      margin-top: 4px;
+    }
+    .item-list__head,
+    .item-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto 72px;
+      gap: 10px;
+      align-items: baseline;
+      padding: 4px 2px;
+      border-bottom: 1px solid var(--gray-50);
+    }
+    .item-list__head {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--gray-300);
+      border-bottom-color: var(--gray-100);
+    }
+    .item-row { font-size: 11px; line-height: 1.4; break-inside: avoid; }
+    .item-row__num { color: var(--gray-300); text-align: right; }
+    .item-row__name { color: var(--ink); }
+    .item-row__note { color: var(--gray-400); }
+    .item-row__meta { color: var(--gray-400); white-space: nowrap; text-align: right; }
+    .item-row__qty { text-align: right; white-space: nowrap; }
+    .item-row .item-row__qty {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .item-row .item-row__qty.is-empty { font-weight: 400; color: var(--gray-200); }
+
+    /* A Panels / Type toggle nobody has picked yet. */
+    #interior-cards .tog-group:not(:has(.tog-btn.active)) {
+      outline: 1.5px dashed var(--gold);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .print-job-num { display: none; }
+    .title-right { display: none; }
+
+    /* ── @media print ──────────────────────────────────── */
+    @media print {
+      @page { size: 8.5in 11in; margin: 0; }
+
+      /* Force colour accuracy */
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+      body { background: white; }
+
+      /* Remove screen chrome */
+      .toolbar,
+      .btnrow,
+      .rm,
+      .row-rm,
+      #export-status,
+      #planner-active-jobs { display: none !important; }
+
+      /* Swap editable tables for card print view */
+      #planner-screen-data { display: none !important; }
+      #planner-print-view  { display: block; }
+
+      /* Sheet: no shadow, no margin */
+      .sheet { box-shadow: none !important; margin: 0 !important; }
+
+      .title {
+        background-color: white !important;
+        padding-bottom: 0;
+        color: black;
+      }
+
+      /* Job num + stage pill stacked in title-right */
+      .title-right {
+        display: flex !important;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+      }
+      .print-job-num {
+        display: block !important;
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: .04em;
+        color: black;
+      }
+
+      /* Job Order # field hidden (shown in title instead) */
+      #job-order-wrap { display: none !important; }
+
+      /* Order Qty / Date Received: horizontal label: value */
+      #job-details-row .input-wrap {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 3px;
+      }
+      #job-details-row .lab {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: var(--section-label);
+        white-space: nowrap;
+      }
+      #job-details-row .lab::after { content: ':'; }
+      #job-details-row .box,
+      #job-details-row .print-date {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        width: auto !important;
+        font-size: 12px;
+      }
+
+      /* ── Inputs → plain text ── */
+      .fl-input,
+      input.box,
+      textarea.notebox {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        resize: none !important;
+        padding: 2px 0 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+      }
+
+      /* Selects → plain text in print */
+      .cat-select,
+      .mat-type-select,
+      .mat-unit {
+        border: none !important;
+        background: transparent !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        padding: 0 !important;
+        height: auto !important;
+      }
+      .mat-type-select { font-weight: 700; }
+
+      /* Title bar inputs stay white on gold */
+      .title input.box {
+        color: #fff !important;
+      }
+
+      /* ── Floating labels: always show in "floated" position ── */
+      .fl-label {
+        top: 0 !important;
+        transform: translateY(-50%) !important;
+        font-size: 8.5px !important;
+        font-weight: 400 !important;
+        letter-spacing: .05em !important;
+        text-transform: uppercase !important;
+        color: var(--ink) !important;
+        background: transparent !important;
+      }
+
+      /* ── Toggle buttons: show only active ── */
+      .tog-btn:not(.active)     { display: none !important; }
+      .tog-group                { border: none !important; }
+      .tog-group:not(:has(.tog-btn.active)) { display: none !important; }
+      .tog-btn.active {
+        border: none !important;
+        background: transparent !important;
+        color: var(--ink) !important;
+        box-shadow: none !important;
+        padding: 2px 0 !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+      }
+
+      /* ── Dept toggles: show only active ── */
+      .dept-toggle:not(.active) { display: none !important; }
+      .dept-toggle.active {
+        border: none !important;
+        background: transparent !important;
+        color: var(--ink) !important;
+        box-shadow: none !important;
+        padding: 2px 4px !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+      }
+
+      /* ── Print date span replaces date input ── */
+      .print-date  { display: inline !important; font-size: 12px; color: var(--ink); }
+      .print-stage-banner {
+        display: block !important;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        padding: 4px 14px;
+        border-radius: 20px;
+        align-self: center;
+        border: 1.5px solid;
+        background: var(--gold-tint);
+        color: var(--gold-dark);
+        border-color: var(--gold-dark);
+      }
+      #date-received { display: none !important; }
+      .fn-toggle { display: none !important; }
+
+      /* ── State embed: visible but white-on-white ── */
+      #stateEmbed {
+        display: block !important;
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        font-size: 4.5pt;
+        font-family: "Courier New", monospace;
+        color: #ffffff;
+        word-break: break-all;
+        line-height: 1.15;
+        padding: 0 24pt 4pt;
+        z-index: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span class="mode-pill">Planner Mode</span>
+    </div>
+    <div class="toolbar-right">
+      <span id="export-status"></span>
+      <!-- Load MCS: button opens the file picker; dropping a PDF on the page does the same -->
+      <button class="btn btn-gray" id="btn-load-mcs" onclick="document.getElementById('mcs-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Load MCS PDF</button>
+      <input type="file" id="mcs-file" accept="application/pdf" hidden onchange="onMcsFileChosen(this)">
+      <button class="btn btn-gold" id="btn-export-pdf" onclick="doSave()">Export Planned PDF <i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <!-- MCS DROP OVERLAY (shown while a file is dragged over the page) -->
+  <div id="mcs-drop-overlay" class="drop-overlay" hidden>
+    <div class="drop-overlay-box">
+      <p>Drop MCS PDF to load</p>
+      <small>A Menu Construction Sheet saved from the MCS</small>
+    </div>
+  </div>
+
+  <!-- ACTIVE DRAFTS PANEL -->
+  <div id="planner-active-jobs">
+    <div id="planner-active-jobs-list"></div>
+    <button class="new-draft-btn" onclick="newDraft()"><i class="fa-solid fa-plus"></i> New Draft</button>
+  </div>
+
+  <div class="sheet">
+    <!-- TITLE BAR -->
+    <div class="title">
+      <span>Preproduction Materials List</span>
+      <div class="title-right">
+        <span class="print-job-num" id="print-job-num"></span>
+        <div id="print-stage-banner" class="print-stage-banner"></div>
+      </div>
+    </div>
+
+    <div class="body">
+
+      <!-- JOB DETAILS ROW -->
+      <div class="frow" id="job-details-row" style="margin: 10px 0 4px; align-items:flex-end;">
+        <div class="input-wrap" id="job-order-wrap">
+          <span class="lab">Job Order #</span>
+          <input type="text" class="box" id="job-order" inputmode="numeric" maxlength="6"
+                 placeholder="000000" style="width:100px;"
+                 oninput="this.value=this.value.replace(/\D/g,'').slice(0,6);"
+                 onblur="onJobOrderBlur(this.value);">
+        </div>
+        <div class="input-wrap">
+          <span class="lab">Order Qty</span>
+          <input type="text" class="box" id="order-qty" inputmode="numeric" style="width:80px;"
+                 oninput="this.value=this.value.replace(/\D/g,''); updateTierUI(); updateHwTotals();">
+        </div>
+        <div class="input-wrap">
+          <span class="lab">Date Received</span>
+          <input type="date" class="box" id="date-received"
+                 style="width:155px;" onchange="updateTierUI();">
+          <span class="print-date" id="print-date"></span>
+        </div>
+        <!-- Show / hide the Function column in Materials (off by default) -->
+        <label class="fn-toggle">
+          <input type="checkbox" id="show-function" onchange="onShowFunctionChange(this.checked);">
+          <span class="lab">Show function column</span>
+        </label>
+      </div>
+
+      <!-- SCREEN-ONLY DATA SECTIONS (hidden in print; replaced by #planner-print-view) -->
+      <div id="planner-screen-data">
+
+      <!-- MATERIALS (exterior + interior) — shared component: components/materials/ -->
+      <div class="band mixed">Materials</div>
+      <div class="section" id="materials-section">
+        <div id="materials-mount"></div>
+      </div>
+      <!-- /MATERIALS -->
+
+      <!-- HARDWARE -->
+      <div class="band mixed">Hardware &amp; Components</div>
+      <div class="section">
+        <table class="mat-table">
+          <thead>
+            <tr>
+              <th class="col-type">Type</th>
+              <th>Details</th>
+              <th class="col-qty" style="text-align:right;">Qty/ea</th>
+              <th class="col-qty" style="text-align:right;">Total Qty</th>
+              <th class="col-rm"></th>
+            </tr>
+          </thead>
+          <tbody id="hw-mat-tbody"></tbody>
+        </table>
+        <div class="btnrow" style="margin-top:6px;">
+          <button class="addbtn" onclick="addHwRow()">+ Add Component</button>
+        </div>
+      </div>
+
+      <!-- PRODUCTION DEPARTMENTS -->
+      <div class="band mixed">
+        Production Departments
+      </div>
+      <div class="section">
+        <div class="btnrow">
+          <button class="addbtn dept-toggle" id="dept-btn-deboss"   onclick="toggleDept('deboss')">Deboss</button>
+          <button class="addbtn dept-toggle" id="dept-btn-offset"   onclick="toggleDept('offset')">Offset Print</button>
+          <button class="addbtn dept-toggle" id="dept-btn-flatbed"  onclick="toggleDept('flatbed')">Flatbed Print</button>
+          <button class="addbtn dept-toggle" id="dept-btn-sewing"   onclick="toggleDept('sewing')">Sewing</button>
+          <button class="addbtn dept-toggle" id="dept-btn-woodshop" onclick="toggleDept('woodshop')">Wood Shop</button>
+          <button class="addbtn dept-toggle" id="dept-btn-metal"    onclick="toggleDept('metal')">Metal Shop</button>
+        </div>
+        <div id="metal-detail-card" class="brow" style="display:none; margin-top:8px; max-width:340px;">
+          <span class="btype">Metal Shop — Scope</span>
+          <div class="card-field">
+            <span class="lab">Scope</span>
+            <div class="tog-group" data-name="metal-scope">
+              <button class="tog-btn active" data-val="tipin" onclick="togClick(this); updateTierUI();">Tip In Only</button>
+              <button class="tog-btn"        data-val="full"  onclick="togClick(this); updateTierUI();">Full</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERIOR COMPONENTS -->
+      <div class="band p1">
+        Interior Components
+      </div>
+      <div class="section">
+        <div class="btnrow">
+          <button class="addbtn" id="add-cb"      onclick="addInterior('cb')">+ Corners</button>
+          <button class="addbtn" id="add-tabs"    onclick="addInterior('tabs')">+ Tabs</button>
+          <button class="addbtn" id="add-pockets" onclick="addInterior('pockets')">+ Pockets</button>
+        </div>
+        <div class="card-grid" id="interior-cards"></div>
+      </div>
+
+      </div><!-- /#planner-screen-data -->
+
+      <!-- PRINT-ONLY card view (populated by buildPlannerPrintView in doSave) -->
+      <div id="planner-print-view"></div>
+
+      <!-- LEAD TIME -->
+      <div class="band p1">Lead Time Assessment</div>
+      <div class="section">
+        <div style="display:flex; gap:12px; align-items:stretch;">
+
+          <!-- Due date box -->
+          <div class="due-date-box none" id="due-date-box">
+            <div class="due-date-label">Due Date</div>
+            <div class="due-date-value" id="due-date-display">—</div>
+          </div>
+
+          <!-- Tier badge -->
+          <div id="tier-badge" class="tier-badge none" style="flex:1;">
+            <div>
+              <div class="tier-label" id="tier-label">LEAD TIME (ESTIMATED)</div>
+              <div class="tier-main"  id="tier-main">Enter job details above</div>
+              <div class="tier-sub"   id="tier-sub"></div>
+            </div>
+            <div id="tier-factors" style="display:none;">
+              <div class="tier-factors-head">Qualifying Factors:</div>
+              <ul class="tier-reasons" id="tier-reasons"></ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="band p1">Notes</div>
+      <div class="section">
+        <textarea class="notebox" id="notes-field" placeholder="Additional notes, open questions, or special instructions..."></textarea>
+      </div>
+
+    </div><!-- /.body -->
+  <div id="stateEmbed"></div>
+  </div><!-- /.sheet -->
+
+
+  <script src="reference/shared.js"></script>
+  <script>
+    /* =============================================================
+       MATERIALS — shared component (components/materials/)
+       The Exterior / Interior tables are the same component the MCS uses.
+       The module script at the bottom of this file mounts it with Qty and
+       Unit columns turned on; these helpers are how the rest of the page
+       reads and writes it. Until the catalog has loaded, a state to restore
+       is held in pendingMaterials.
+    ============================================================= */
+    var materialsSection = null;
+    var pendingMaterials = null;
+
+    function getMaterialsState() {
+      return materialsSection ? materialsSection.getState() : (pendingMaterials || { ext: [], int: [] });
+    }
+    function setMaterialsState(m) {
+      if (materialsSection) materialsSection.setState(m);
+      else pendingMaterials = m;
+    }
+    /* "Show function column" checkbox */
+    function onShowFunctionChange(on) {
+      if (materialsSection) materialsSection.setShowFunction(on);
+      updateTierUI();
+    }
+
+    function hasMaterialContent(row) {
+      return !!(row.cat || row.qty || row.fn || (row.fnArr && row.fnArr.length));
+    }
+    function materialsHaveContent(m) {
+      return (m.ext || []).concat(m.int || []).some(hasMaterialContent);
+    }
+
+    /* Turn an older saved state (v5 materials, or the v4 "Cover Materials"
+       table) into the shared component's shape. */
+    function upgradeMaterials(state) {
+      var m = state.materials;
+      if (m && (m.ext || m.int)) return m;                       /* current shape */
+      function old(r) {
+        return { cat: r.category, fields: r.fields || {}, fn: r.function || '', fnArr: r.functions || [], qty: r.qty, unit: r.unit };
+      }
+      if (m) return { ext: (m.exterior || []).map(old), int: (m.interior || []).map(old) };
+      if (state.coverMaterials && state.coverMaterials.length) {
+        return { ext: state.coverMaterials.filter(function(r) { return r.type; }).map(function(r) {
+          var f = r.fields || {};
+          return { cat: r.type, qty: r.qty, unit: r.unit, fn: '',
+            fields: r.type === 'leather'
+              ? { productLine: f.productLine, weight: f.weight, color: f.color, swatchNumber: f.id }
+              : { vendor: f.vendor, productLine: f.productLine, color: f.color, decoration: f.decoration } };
+        }), int: [] };
+      }
+      return { ext: [], int: [] };
+    }
+    /* =============================================================
+       HARDWARE — table view
+    ============================================================= */
+    var _hwRowN = 0;
+
+    /* Hardware types come from data/catalog.js — the one hardware list
+       for the MCS and the BLC (decided 2026-10-01). The hardcoded
+       HW_PLANNER_CONFIG that used to live here has been retired; the
+       names stay so the rest of this page reads the same.
+       setHardwareCatalog() fills them from the module at the bottom of
+       the page. Suggestions are hardwareSuggest() in engines/catalog.js,
+       the same function the MCS uses. */
+    var HW_PLANNER_CONFIG = [];
+    var HW_CONFIG_MAP = {};
+    var _hwTypeOptions = '<option value="">— Select —</option>';
+    var _hwSuggest = null;
+
+    function setHardwareCatalog(types, suggestFn) {
+      /* Rows added before the catalog arrived keep their type and values. */
+      var rows = Array.from(document.querySelectorAll('#hw-mat-tbody .mat-row')).map(readHwRow);
+      HW_PLANNER_CONFIG = types;
+      HW_CONFIG_MAP = {};
+      types.forEach(function(h) { HW_CONFIG_MAP[h.id] = h; });
+      _hwSuggest = suggestFn;
+      _hwTypeOptions = '<option value="">— Select —</option>' +
+        types.map(function(h) { return '<option value="' + h.id + '">' + escHtml(h.label) + '</option>'; }).join('');
+      clearHwTable();
+      rows.forEach(function(r) { addHwRow(r.type, r.fields, r.qtyEa); });
+    }
+
+    /* Saved before the catalog was the hardware list: the BLC's own field
+       ids (and, briefly, the catalog's old ones). Converted on load so old
+       drafts, PDFs and MCS uploads still fill in. */
+    function upgradeHwFields(type, f) {
+      f = Object.assign({}, f || {});
+      var has = function(k) { return Object.prototype.hasOwnProperty.call(f, k); };
+      if (type === 'elastic-cords') {
+        if (has('length2')) return { color: f.color, closureColor: f.style, closureStyle: f.length, length: f.length2 };
+        if (has('style') && !has('closureColor')) {
+          var m = /^(\S+)\s+(\S+)$/.exec(String(f.style || '').trim());
+          return { color: f.color, closureColor: m ? m[1] : f.style, closureStyle: m ? m[2] : '', length: f.length };
+        }
+      }
+      if (type === 'eyelets' && has('size2')) return { color: f.color, size: f.size2 };
+      if (type === 'ring-binder') {
+        if (has('model2')) return { rings: f.model, model: f.model2, color: f.color };
+        if (!has('rings') && /—/.test(f.model || '')) {
+          var parts = f.model.split('—').map(function(x) { return x.trim(); });
+          return { rings: parts[0].replace(/^(\d+)-ring$/i, '$1 Ring'), model: parts[parts.length - 1], color: f.color || '' };
+        }
+      }
+      if (type === 'plastic-sleeves') {
+        if (has('type2')) return { type: f.type2, size: f.type };
+        if (!has('size')) {
+          var p = /^(3-Hole)\s+(8\.5×1[14])/.exec(String(f.type || ''));
+          if (p) return { type: p[1], size: p[2] };
+        }
+      }
+      return f;
+    }
+    /* Rowmark was a BLC hardware type; it is a material category now. An old
+       row comes back as Custom Hardware so its details aren't lost. */
+    function upgradeHwType(type, fields) {
+      if (type === 'romark') {
+        var d = ['size', 'color', 'thickness'].map(function(k) { return (fields || {})[k]; }).filter(Boolean);
+        return { type: 'custom-hardware', fields: { desc: 'Rowmark' + (d.length ? ' — ' + d.join(', ') : '') } };
+      }
+      return { type: type, fields: fields };
+    }
+
+    function buildHwFields(type, n) {
+      var conf = HW_CONFIG_MAP[type];
+      if (!conf) return '<div class="fields-empty">Select a type to add details</div>';
+      var html = '<div class="fields-cell">';
+      conf.fields.forEach(function(f) {
+        var uid = 'hw-' + n + '-' + f.id;
+        html +=
+          '<div class="fl-wrap">' +
+            '<input type="text" class="fl-input hw-field hw-f-' + f.id + '" data-hw-field="' + f.id + '"' +
+            ' placeholder="' + escHtml(f.label || f.id) + '" id="' + uid + '" list="' + uid + '-dl" autocomplete="off"' +
+            ' onfocus="hwRefresh(this)" oninput="updateTierUI(); hwRefresh(this);">' +
+            '<datalist id="' + uid + '-dl"></datalist>' +
+          '</div>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    /* Narrow every field's suggestions to what goes with the rest of the row. */
+    function hwRefresh(inp) {
+      var tr = inp.closest('.mat-row');
+      var conf = tr && HW_CONFIG_MAP[tr.dataset.hwType];
+      if (!conf || !_hwSuggest) return;
+      var vals = {};
+      tr.querySelectorAll('[data-hw-field]').forEach(function(i) { vals[i.dataset.hwField] = i.value; });
+      tr.querySelectorAll('[data-hw-field]').forEach(function(i) {
+        var dl = document.getElementById(i.getAttribute('list'));
+        if (!dl) return;
+        var own = Object.assign({}, vals); delete own[i.dataset.hwField];
+        dl.replaceChildren.apply(dl, _hwSuggest(conf, i.dataset.hwField, own).map(function(v) { return new Option(v); }));
+      });
+    }
+
+    function readHwRow(tr) {
+      var fields = {};
+      tr.querySelectorAll('[data-hw-field]').forEach(function(i) { fields[i.dataset.hwField] = i.value; });
+      return {
+        type: tr.dataset.hwType || '',
+        fields: tr._pendingFields ? Object.assign({}, tr._pendingFields, fields) : fields,
+        qtyEa: tr.querySelector('.hw-qty-ea').value
+      };
+    }
+
+    function addHwRow(type, fields, qtyEa) {
+      var up = upgradeHwType(type, fields);
+      type = up.type;
+      fields = type ? upgradeHwFields(type, up.fields) : up.fields;
+      var n  = _hwRowN++;
+      var tr = document.createElement('tr');
+      tr.className = 'mat-row';
+      tr.dataset.hwType = type || '';
+      /* Until the catalog arrives there are no inputs to put values in. */
+      if (fields && type && !HW_CONFIG_MAP[type]) tr._pendingFields = fields;
+      tr.innerHTML =
+        '<td class="col-type">' +
+          '<select class="mat-type-select" data-row="' + n + '" onchange="onHwTypeChange(this)">' +
+            _hwTypeOptions.replace('value="' + (type || '') + '"', 'value="' + (type || '') + '" selected') +
+          '</select>' +
+        '</td>' +
+        '<td class="col-fields" id="hw-fields-' + n + '">' + buildHwFields(type || '', n) + '</td>' +
+        '<td class="col-qty">' +
+          '<input type="text" class="box mat-qty hw-qty-ea" inputmode="numeric" placeholder="0" value="' + (qtyEa || '') + '"' +
+          ' oninput="updateTierUI(); updateHwTotals();">' +
+        '</td>' +
+        '<td class="col-qty hw-total-qty" style="text-align:right; padding-right:8px; color:var(--gray-400);">—</td>' +
+        '<td class="col-rm"><button class="row-rm" title="Remove" onclick="removeHwRow(this)"><i class="fa-solid fa-xmark"></i></button></td>';
+      document.getElementById('hw-mat-tbody').appendChild(tr);
+
+      if (fields && type && HW_CONFIG_MAP[type]) {
+        HW_CONFIG_MAP[type].fields.forEach(function(f) {
+          var inp = tr.querySelector('.hw-f-' + f.id);
+          if (inp && fields[f.id]) inp.value = fields[f.id];
+        });
+      }
+      updateHwTotals();
+      updateTierUI();
+    }
+
+    function onHwTypeChange(select) {
+      var n    = select.dataset.row;
+      var tr   = select.closest('.mat-row');
+      tr.dataset.hwType = select.value;
+      tr._pendingFields = null;
+      var cell = document.getElementById('hw-fields-' + n);
+      if (cell) cell.innerHTML = buildHwFields(select.value, n);
+      updateTierUI();
+    }
+
+    function removeHwRow(btn) {
+      var row = btn.closest('.mat-row');
+      if (row) row.remove();
+      updateTierUI();
+    }
+
+    function clearHwTable() {
+      document.getElementById('hw-mat-tbody').innerHTML = '';
+    }
+
+    function updateHwTotals() {
+      var orderQty = parseInt(document.getElementById('order-qty').value) || 0;
+      document.querySelectorAll('#hw-mat-tbody .mat-row').forEach(function(tr) {
+        var qtyEa = parseInt(tr.querySelector('.hw-qty-ea').value) || 0;
+        var cell  = tr.querySelector('.hw-total-qty');
+        cell.textContent = (orderQty && qtyEa) ? (orderQty * qtyEa).toLocaleString() : '—';
+      });
+    }
+
+    function collectPlannerHardware() {
+      var rows = [];
+      document.querySelectorAll('#hw-mat-tbody .mat-row').forEach(function(tr) {
+        rows.push(readHwRow(tr));
+      });
+      return rows;
+    }
+
+    /* =============================================================
+       DEPARTMENTS — toggle buttons, no cards
+    ============================================================= */
+    function toggleDept(key) {
+      var btn = document.getElementById('dept-btn-'+key);
+      if (!btn) return;
+      btn.classList.toggle('active');
+      if (key === 'metal') {
+        var card = document.getElementById('metal-detail-card');
+        if (card) card.style.display = btn.classList.contains('active') ? '' : 'none';
+      }
+      updateTierUI();
+    }
+
+    /* =============================================================
+       INTERIOR COMPONENTS
+    ============================================================= */
+    function togClick(btn) {
+      var group = btn.closest('.tog-group');
+      group.querySelectorAll('.tog-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      updateTierUI();
+    }
+
+    function togVal(name) {
+      var group = document.querySelector('.tog-group[data-name="'+name+'"]');
+      if (!group) return null;
+      var active = group.querySelector('.tog-btn.active');
+      return active ? active.dataset.val : null;
+    }
+
+    function setTogVal(name, val) {
+      if (!val) return;
+      var group = document.querySelector('.tog-group[data-name="'+name+'"]');
+      if (!group) return;
+      group.querySelectorAll('.tog-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.val === val);
+      });
+    }
+
+    function togFields(namePrefix, titles) {
+      /* Renders two card-field blocks: Panels toggle + Type toggle.
+         Nothing starts selected: whoever adds the card has to choose,
+         and Save as PDF is blocked until they do (missingInteriorChoices). */
+      var panelsName = namePrefix + '-panels';
+      var typeName   = namePrefix + '-type';
+      return (titles.panels ?
+          '<div class="card-field">' +
+            '<span class="lab">Panels</span>' +
+            '<div class="tog-group" data-name="'+panelsName+'">' +
+              '<button class="tog-btn" data-val="1-4" onclick="togClick(this)">1–4</button>' +
+              '<button class="tog-btn" data-val="5+" onclick="togClick(this)">5+</button>' +
+            '</div>' +
+          '</div>' : '') +
+        '<div class="card-field">' +
+          '<span class="lab">Type</span>' +
+          '<div class="tog-group" data-name="'+typeName+'">' +
+            '<button class="tog-btn" data-val="std" onclick="togClick(this)">Standard</button>' +
+            '<button class="tog-btn" data-val="nonstd" onclick="togClick(this)">Non-Standard</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function addInterior(type) {
+      if (document.getElementById(type+'-card')) return;
+      var card = document.createElement('div');
+      card.className = 'brow';
+      card.id = type + '-card';
+
+      var titles = { panels: true };
+      if (type === 'cb') {
+        card.innerHTML =
+          '<span class="btype">Corners</span>' +
+          togFields('cb', titles) +
+          '<button class="rm" title="Remove" onclick="removeInterior(\'cb\')"><i class="fa-solid fa-xmark"></i></button>';
+      } else if (type === 'pockets') {
+        card.innerHTML =
+          '<span class="btype">Pockets</span>' +
+          togFields('pockets', { panels: false }) +
+          '<button class="rm" title="Remove" onclick="removeInterior(\'pockets\')"><i class="fa-solid fa-xmark"></i></button>';
+      } else if (type === 'tabs') {
+        card.innerHTML =
+          '<span class="btype">Tabs</span>' +
+          togFields('tabs', titles) +
+          '<button class="rm" title="Remove" onclick="removeInterior(\'tabs\')"><i class="fa-solid fa-xmark"></i></button>';
+      }
+
+      document.getElementById('interior-cards').appendChild(card);
+      document.getElementById('add-'+type).disabled = true;
+      updateTierUI();
+    }
+
+    function removeInterior(type) {
+      var card = document.getElementById(type+'-card');
+      if (card) card.remove();
+      document.getElementById('add-'+type).disabled = false;
+      updateTierUI();
+    }
+
+    /* =============================================================
+       HTML HELPERS
+    ============================================================= */
+    function escHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* Builds the card-style print view from a collected state object */
+    function buildPlannerPrintView(state) {
+      var html = '';
+      var orderQty = parseInt(state.orderQty) || 0;
+
+      /* ── Materials and Hardware: one line per item ──
+         Each item's values run together as one name, with the total
+         quantity at the right — the number Bindery orders from.
+         Markup per line: .item-row > __num, __name (+ __note), __meta, __qty. */
+      function itemList(title, qtyHead, items) {
+        if (!items.length) return '';
+        var out = '<div class="band mixed">' + title + '</div><div class="section"><div class="item-list">' +
+          '<div class="item-list__head"><span class="item-row__num">#</span><span class="item-row__name">Item</span>' +
+          '<span class="item-row__meta"></span><span class="item-row__qty">' + qtyHead + '</span></div>';
+        items.forEach(function(it, i) {
+          out += '<div class="item-row">' +
+            '<span class="item-row__num">' + (i + 1) + '</span>' +
+            '<span class="item-row__name">' + escHtml(it.name || '—') +
+              (it.note ? ' <span class="item-row__note">' + escHtml(it.note) + '</span>' : '') + '</span>' +
+            '<span class="item-row__meta">' + escHtml(it.meta || '') + '</span>' +
+            '<span class="item-row__qty' + (it.qty ? '' : ' is-empty') + '">' + escHtml(it.qty || '—') + '</span>' +
+            '</div>';
+        });
+        return out + '</div></div>';
+      }
+
+      var matRows = materialsSection ? materialsSection.describe() : [];
+      [['Exterior Materials', 'ext'], ['Interior Materials', 'int']].forEach(function(grp) {
+        var items = matRows.filter(function(r) { return r.sec === grp[1] && r.hasContent; }).map(function(r) {
+          var get = function(label) { var p = r.pairs.filter(function(x) { return x[0] === label; })[0]; return p ? p[1] : ''; };
+          var vals = r.pairs.filter(function(p) { return p[0] !== 'Qty' && p[0] !== 'Function'; })
+            .map(function(p) { return p[1]; });
+          return {
+            name: [r.category].concat(vals).filter(Boolean).join(' · '),
+            note: get('Function'),
+            qty: get('Qty')
+          };
+        });
+        html += itemList(grp[0], 'Total qty', items);
+      });
+
+      var hwItems = (state.plannerHardware || []).filter(function(h) { return h.type; }).map(function(ph) {
+        var conf = HW_CONFIG_MAP[ph.type] || { label: ph.type, fields: [] };
+        var vals = conf.fields.map(function(f) { return (ph.fields || {})[f.id]; }).filter(Boolean);
+        var qtyEa = parseInt(ph.qtyEa) || 0;
+        return {
+          name: [conf.label].concat(vals).join(' · '),
+          meta: qtyEa ? qtyEa + '/ea' + (orderQty ? ' × ' + orderQty.toLocaleString() : '') : '',
+          qty: qtyEa && orderQty ? (qtyEa * orderQty).toLocaleString() : ''
+        };
+      });
+      html += itemList('Hardware &amp; Components', 'Total qty', hwItems);
+
+      /* ── Production Departments ── */
+      var d = state.depts || {};
+      var DEPT_NAMES = {
+        deboss: 'Deboss', offset: 'Offset Print', flatbed: 'Flatbed Print',
+        sewing: 'Sewing', woodshop: 'Wood Shop', metal: 'Metal Shop'
+      };
+      var activeDepts = Object.keys(DEPT_NAMES).filter(function(k) { return d[k]; });
+      if (activeDepts.length > 0) {
+        html += '<div class="band mixed">Production Departments</div><div class="section"><div class="dept-grid">';
+        activeDepts.forEach(function(k) {
+          html += '<div class="dept-card"><div class="dept-title">' + DEPT_NAMES[k] + '</div>';
+          if (k === 'metal') {
+            html += '<div class="card-sub">' + (state.metalTippin ? 'Tip In Only' : 'Full') + '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div></div>';
+      }
+
+      /* ── Interior Components ── */
+      var ic = state.interior || {};
+      if (ic.cbInclude || ic.pocketsInclude || ic.tabsInclude) {
+        html += '<div class="band mixed">Interior Components</div><div class="section"><div class="card-grid">';
+        if (ic.cbInclude) {
+          html += '<div class="brow"><div class="btype">Corners</div>';
+          var cbDet = [ic.cbPanels ? ic.cbPanels + ' panels' : '',
+                       ic.cbType  ? (ic.cbType === 'std' ? 'Standard' : 'Non-Standard') : '']
+            .filter(Boolean).join(' · ');
+          if (cbDet) html += '<div class="detail-text">' + escHtml(cbDet) + '</div>';
+          html += '</div>';
+        }
+        if (ic.pocketsInclude) {
+          html += '<div class="brow"><div class="btype">Pockets</div>';
+          if (ic.pocketsType) html += '<div class="detail-text">' +
+            (ic.pocketsType === 'std' ? 'Standard' : 'Non-Standard') + '</div>';
+          html += '</div>';
+        }
+        if (ic.tabsInclude) {
+          html += '<div class="brow"><div class="btype">Tabs</div>';
+          var tabDet = [ic.tabsPanels ? ic.tabsPanels + ' panels' : '',
+                        ic.tabsType   ? (ic.tabsType === 'std' ? 'Standard' : 'Non-Standard') : '']
+            .filter(Boolean).join(' · ');
+          if (tabDet) html += '<div class="detail-text">' + escHtml(tabDet) + '</div>';
+          html += '</div>';
+        }
+        html += '</div></div>';
+      }
+
+      return html;
+    }
+
+    /* =============================================================
+       STATE COLLECTION
+    ============================================================= */
+    /* YYYY-MM-DD (date input) → MM/DD/YYYY (display / state) */
+    function isoToDisplay(str) {
+      var m = str ? str.match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+      return m ? m[2] + '/' + m[3] + '/' + m[1] : '';
+    }
+    /* MM/DD/YYYY (state) → YYYY-MM-DD (date input value) */
+    function displayToISO(str) {
+      var m = str ? str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/) : null;
+      if (!m) return '';
+      var mo = parseInt(m[1]), dy = parseInt(m[2]);
+      return m[3] + '-' + (mo < 10 ? '0'+mo : mo) + '-' + (dy < 10 ? '0'+dy : dy);
+    }
+
+    function collectCurrentState() {
+      /* Materials — exterior + interior tables */
+      var materials = getMaterialsState();
+
+      /* Hardware — new table format */
+      var plannerHardware = collectPlannerHardware();
+
+      /* Derive backward-compat array for coordinator */
+      var hw = [];
+      HW_MATERIALS.forEach(function(mat) {
+        var match = plannerHardware.filter(function(h) { return h.type === mat.id; });
+        if (match.length > 0) {
+          var conf = HW_CONFIG_MAP[mat.id];
+          var vals = conf ? conf.fields.map(function(f) { return match[0].fields[f.id] || ''; }) : [];
+          hw.push({ id: mat.id, active: true,  fields: vals, status: 'in-house' });
+        } else {
+          hw.push({ id: mat.id, active: false, fields: [],   status: 'in-house' });
+        }
+      });
+
+      /* Departments */
+      var depts = {};
+      ['deboss','offset','flatbed','sewing','woodshop','metal'].forEach(function(k) {
+        var btn = document.getElementById('dept-btn-'+k);
+        depts[k] = !!(btn && btn.classList.contains('active'));
+      });
+
+      /* Interior */
+      var cbCard      = document.getElementById('cb-card');
+      var pocketsCard = document.getElementById('pockets-card');
+      var tabsCard    = document.getElementById('tabs-card');
+      var interior = {
+        cbInclude:      !!cbCard,
+        cbPanels:       cbCard     ? togVal('cb-panels')     : null,
+        cbType:         cbCard     ? togVal('cb-type')       : null,
+        pocketsInclude: !!pocketsCard,
+        pocketsType:    pocketsCard ? togVal('pockets-type') : null,
+        tabsInclude:    !!tabsCard,
+        tabsPanels:     tabsCard   ? togVal('tabs-panels')   : null,
+        tabsType:       tabsCard   ? togVal('tabs-type')     : null
+      };
+
+      var tierResult = determineTierFromState({
+        orderQty: document.getElementById('order-qty').value,
+        depts: depts,
+        interior: interior
+      }, 'planner');
+
+      return {
+        version: 6,
+        exportedAt: new Date().toISOString(),
+        exportedBy: 'planner',
+        jobOrder:     document.getElementById('job-order').value,
+        orderQty:     document.getElementById('order-qty').value,
+        dateReceived: isoToDisplay(document.getElementById('date-received').value),
+        dueDateCalc:  document.getElementById('due-date-display').textContent,
+        tierCalc:     tierResult.tier,
+        materials: materials,
+        showFunction: document.getElementById('show-function').checked,
+        plannerHardware: plannerHardware,
+        hardware: hw,
+        depts: depts,
+        metalTippin: togVal('metal-scope') === 'tipin',
+        deptsCompleted: {},
+        interior: interior,
+        notes: document.getElementById('notes-field').value
+      };
+    }
+
+    /* =============================================================
+       TIER UI
+    ============================================================= */
+    function updateTierUI() {
+      var state  = collectCurrentState();
+      var result = determineTierFromState(state, 'planner');
+      var info   = TIER_INFO[result.tier];
+
+      var hasInput = state.orderQty ||
+        materialsHaveContent(state.materials) ||
+        state.hardware.some(function(h) { return h.active; }) ||
+        Object.values(state.depts).some(Boolean) ||
+        state.interior.cbInclude || state.interior.pocketsInclude || state.interior.tabsInclude;
+
+      var badge = document.getElementById('tier-badge');
+      var main  = document.getElementById('tier-main');
+      var sub   = document.getElementById('tier-sub');
+      var lbl   = document.getElementById('tier-label');
+      var fac   = document.getElementById('tier-factors');
+      var lst   = document.getElementById('tier-reasons');
+
+      var dueBox = document.getElementById('due-date-box');
+      if (!hasInput) {
+        badge.className  = 'tier-badge none';
+        dueBox.className = 'due-date-box none';
+        main.textContent = 'Enter job details above';
+        sub.textContent  = '';
+        fac.style.display = 'none';
+        document.getElementById('due-date-display').textContent = '—';
+        return;
+      }
+
+      badge.className  = 'tier-badge '    + info.cls;
+      dueBox.className = 'due-date-box ' + info.cls;
+      lbl.textContent  = 'LEAD TIME (ESTIMATED)';
+      main.textContent = info.label;
+      sub.textContent  = info.days ? info.days + ' Work Days' : 'To be determined';
+
+      lst.innerHTML = '';
+      fac.style.display = '';
+      if (result.reasons.length === 0) {
+        lst.innerHTML = '<li>All conditions within Tier 1 thresholds</li>';
+      } else {
+        result.reasons.forEach(function(r) {
+          var li = document.createElement('li'); li.textContent = r.text; lst.appendChild(li);
+        });
+      }
+
+      var dr   = state.dateReceived;
+      var ddEl = document.getElementById('due-date-display');
+      if (result.tier === 4 || !info.days) { ddEl.textContent = 'TBD (Tier 4)'; }
+      else if (!dr || !/^(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])\/\d{4}$/.test(dr)) { ddEl.textContent = '—'; }
+      else { ddEl.textContent = addWorkdays(dr, info.days); }
+
+      state.dueDateCalc = ddEl.textContent;
+
+      /* Auto-save to planner drafts whenever a job is active */
+      if (CURRENT_PLANNER_JOB) savePlannerJob(CURRENT_PLANNER_JOB, state);
+    }
+
+    /* =============================================================
+       APPLY SAVED STATE (draft restore)
+    ============================================================= */
+    function applyState(state) {
+      if (!state) return;
+      document.getElementById('job-order').value    = state.jobOrder   || '';
+      document.getElementById('order-qty').value    = state.orderQty   || '';
+      document.getElementById('date-received').value = displayToISO(state.dateReceived || '');
+
+      /* Materials */
+      document.getElementById('show-function').checked = !!state.showFunction;
+      if (materialsSection) materialsSection.setShowFunction(!!state.showFunction);
+      setMaterialsState(upgradeMaterials(state));
+
+      /* Hardware — new format */
+      clearHwTable();
+      if (state.plannerHardware && state.plannerHardware.length > 0) {
+        state.plannerHardware.forEach(function(h) {
+          addHwRow(h.type, h.fields, h.qtyEa);
+        });
+      } else {
+        /* Legacy: convert old indexed hardware array */
+        /* Positional values in the BLC's old field order (before the
+           catalog); addHwRow() converts them to catalog fields. */
+        var OLD_FIELDS = {
+          'magnets': ['desc'], 'elastic-cords': ['color', 'style', 'length'], 'eyelets': ['size', 'color'],
+          'o-rings': ['desc'], 'ring-binder': ['model'], 'bands': ['color', 'size'], 'clips': ['color'],
+          'romark': ['size', 'color', 'thickness'], 'rivets': ['desc'], 'plastic-sleeves': ['type'],
+          'snaps': ['line', 'type'], 'screw-posts': ['color', 'size'], 'custom-hardware': ['desc']
+        };
+        (state.hardware || []).forEach(function(hw) {
+          if (!hw.active) return;
+          var fields = {};
+          (OLD_FIELDS[hw.id] || []).forEach(function(id, i) { fields[id] = (hw.fields || [])[i] || ''; });
+          addHwRow(hw.id, fields, '');
+        });
+      }
+
+      var d = state.depts || {};
+      ['deboss','offset','flatbed','sewing','woodshop','metal'].forEach(function(k) {
+        if (d[k]) {
+          var btn = document.getElementById('dept-btn-'+k);
+          if (btn) btn.classList.add('active');
+        }
+      });
+      if (d.metal) {
+        var metalCard = document.getElementById('metal-detail-card');
+        if (metalCard) metalCard.style.display = '';
+        setTogVal('metal-scope', state.metalTippin ? 'tipin' : 'full');
+      }
+
+      var ic = state.interior || {};
+      if (ic.cbInclude) {
+        addInterior('cb');
+        if (ic.cbPanels) setTogVal('cb-panels', ic.cbPanels);
+        if (ic.cbType)   setTogVal('cb-type',   ic.cbType);
+      }
+      if (ic.pocketsInclude) {
+        addInterior('pockets');
+        if (ic.pocketsType) setTogVal('pockets-type', ic.pocketsType);
+      }
+      if (ic.tabsInclude) {
+        addInterior('tabs');
+        if (ic.tabsPanels) setTogVal('tabs-panels', ic.tabsPanels);
+        if (ic.tabsType)   setTogVal('tabs-type',   ic.tabsType);
+      }
+
+      document.getElementById('notes-field').value = state.notes || '';
+      updateTierUI();
+    }
+
+    /* =============================================================
+       PLANNER-SPECIFIC LOCALSTORAGE  (separate from coordinator)
+    ============================================================= */
+    var LS_PLANNER_PREFIX = 'pp_planner_job_';
+    var LS_PLANNER_ACTIVE = 'pp_planner_active_jobs';
+    var CURRENT_PLANNER_JOB = null;
+
+    function savePlannerJob(jobOrder, state) {
+      localStorage.setItem(LS_PLANNER_PREFIX + jobOrder, JSON.stringify(state));
+      var ids = getPlannerJobIds();
+      if (ids.indexOf(jobOrder) === -1) ids.push(jobOrder);
+      localStorage.setItem(LS_PLANNER_ACTIVE, JSON.stringify(ids));
+    }
+
+    function loadPlannerJob(jobOrder) {
+      var raw = localStorage.getItem(LS_PLANNER_PREFIX + jobOrder);
+      return raw ? JSON.parse(raw) : null;
+    }
+
+    function getPlannerJobIds() {
+      var raw = localStorage.getItem(LS_PLANNER_ACTIVE);
+      return raw ? JSON.parse(raw) : [];
+    }
+
+    function removePlannerJob(jobOrder) {
+      localStorage.removeItem(LS_PLANNER_PREFIX + jobOrder);
+      var ids = getPlannerJobIds().filter(function(id) { return id !== jobOrder; });
+      localStorage.setItem(LS_PLANNER_ACTIVE, JSON.stringify(ids));
+    }
+
+    /* =============================================================
+       ACTIVE DRAFTS PANEL
+    ============================================================= */
+    function renderPlannerChips() {
+      var ids    = getPlannerJobIds();
+      var panel  = document.getElementById('planner-active-jobs');
+      var list   = document.getElementById('planner-active-jobs-list');
+      list.innerHTML = '';
+      if (ids.length === 0) { panel.style.display = 'none'; return; }
+      panel.style.display = 'flex';
+      ids.forEach(function(id) {
+        var chip = document.createElement('div');
+        chip.className = 'job-chip' + (id === CURRENT_PLANNER_JOB ? ' active' : '');
+        chip.innerHTML =
+          '<span class="job-chip-id">' + id + '</span>' +
+          '<span class="job-chip-phase phase-draft">Draft</span>' +
+          '<button class="chip-dismiss" title="Delete draft"><i class="fa-solid fa-xmark"></i></button>';
+        chip.addEventListener('click', function(e) {
+          if (e.target.closest('.chip-dismiss')) {
+            dismissPlannerDraft(id);
+          } else {
+            resumePlannerJob(id);
+          }
+        });
+        list.appendChild(chip);
+      });
+    }
+
+    function dismissPlannerDraft(id) {
+      removePlannerJob(id);
+      if (CURRENT_PLANNER_JOB === id) CURRENT_PLANNER_JOB = null;
+      renderPlannerChips();
+    }
+
+    function newDraft() {
+      CURRENT_PLANNER_JOB = null;
+
+      /* Clear header fields */
+      document.getElementById('job-order').value     = '';
+      document.getElementById('order-qty').value     = '';
+      document.getElementById('date-received').value = new Date().toISOString().slice(0, 10);
+
+      /* Clear materials tables */
+      setMaterialsState({ ext: [], int: [] });
+      document.getElementById('show-function').checked = false;
+      if (materialsSection) materialsSection.setShowFunction(false);
+
+      /* Clear hardware table */
+      clearHwTable();
+
+      /* Clear department toggles */
+      ['deboss','offset','flatbed','sewing','woodshop','metal'].forEach(function(k) {
+        var btn = document.getElementById('dept-btn-' + k);
+        if (btn) btn.classList.remove('active');
+      });
+      var metalCard = document.getElementById('metal-detail-card');
+      if (metalCard) metalCard.style.display = 'none';
+
+      /* Remove interior cards */
+      removeInterior('cb');
+      removeInterior('pockets');
+      removeInterior('tabs');
+
+      /* Clear notes */
+      document.getElementById('notes-field').value = '';
+
+      updateTierUI();
+      renderPlannerChips();
+      document.getElementById('job-order').focus();
+    }
+
+    function resumePlannerJob(id) {
+      var state = loadPlannerJob(id);
+      if (!state) return;
+      CURRENT_PLANNER_JOB = id;
+      applyState(state);
+      renderPlannerChips();
+    }
+
+    /* =============================================================
+       JOB NUMBER BLUR — save & register draft
+    ============================================================= */
+    function onJobOrderBlur(val) {
+      if (/^\d{6}$/.test(val)) {
+        CURRENT_PLANNER_JOB = val;
+        var state = collectCurrentState();
+        savePlannerJob(val, state);
+        renderPlannerChips();
+      }
+    }
+
+    /* =============================================================
+       LOAD MCS PDF
+       Reads the sheet data the MCS embeds in its saved PDF (%%CS%%…%%CS%%),
+       then fills this plan from it: job #, materials, and the production
+       departments and hardware the MCS worked out when it saved (s.blc —
+       see blcHandoff in mcs/index.html).
+       - A different job # than the one on screen starts a new draft first.
+       - Departments are only switched on, never off.
+       - Hardware rows are added only for types not already in the table.
+    ============================================================= */
+    var _pdfjsReady = false;
+    function ensurePdfJs(cb) {
+      if (_pdfjsReady) { cb(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = function() {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        _pdfjsReady = true;
+        cb();
+      };
+      s.onerror = function() { showImportStatus('Could not load the PDF reader — check your internet connection.'); };
+      document.head.appendChild(s);
+    }
+
+    function showImportStatus(msg) {
+      var el = document.getElementById('export-status');
+      el.textContent = msg;
+      el.classList.add('is-visible');
+      clearTimeout(showImportStatus._t);
+      showImportStatus._t = setTimeout(function() { el.classList.remove('is-visible'); }, 6000);
+    }
+
+    function onMcsFileChosen(input) {
+      var file = input.files[0];
+      input.value = '';
+      if (file) ensurePdfJs(function() { loadMcsPdf(file); });
+    }
+
+    document.addEventListener('dragover', function(e) {
+      if (e.dataTransfer.types && Array.from(e.dataTransfer.types).indexOf('Files') > -1) {
+        e.preventDefault();
+        document.getElementById('mcs-drop-overlay').hidden = false;
+      }
+    });
+    document.addEventListener('dragleave', function(e) {
+      if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
+        document.getElementById('mcs-drop-overlay').hidden = true;
+      }
+    });
+    document.addEventListener('drop', function(e) {
+      e.preventDefault();
+      document.getElementById('mcs-drop-overlay').hidden = true;
+      var file = e.dataTransfer.files[0];
+      if (!file || file.type !== 'application/pdf') { showImportStatus('Drop a PDF saved from the MCS.'); return; }
+      ensurePdfJs(function() { loadMcsPdf(file); });
+    });
+
+    function loadMcsPdf(file) {
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        pdfjsLib.getDocument({ data: new Uint8Array(ev.target.result) }).promise
+          .then(function(pdf) {
+            var nums = [];
+            for (var i = 1; i <= pdf.numPages; i++) nums.push(i);
+            return Promise.all(nums.map(function(n) {
+              return pdf.getPage(n).then(function(p) { return p.getTextContent(); });
+            }));
+          })
+          .then(function(pages) {
+            var full = pages.flatMap(function(p) { return p.items.map(function(it) { return it.str; }); }).join('');
+            var m = full.match(/%%CS%%([\s\S]+?)%%CS%%/);
+            if (!m) { showImportStatus('No sheet data found in this PDF.'); return; }
+            var state;
+            try { state = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/\s/g, ''))))); }
+            catch (err) { showImportStatus('Could not read the sheet data — the PDF may be corrupted.'); return; }
+            importMcsState(state);
+          })
+          .catch(function() { showImportStatus('Could not open this PDF.'); });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function importMcsState(s) {
+      /* MCS sheets are v:1 and carry materials; a BLC export has exportedBy: 'planner' */
+      if (!s || s.v !== 1 || s.exportedBy) { showImportStatus('This PDF isn’t a Menu Construction Sheet.'); return; }
+      if (!s.materials || !s.blc) {
+        showImportStatus('This sheet was saved before the BLC hand-off existed. Open it in the MCS and save it again.');
+        return;
+      }
+
+      var job = /^\d{6}$/.test(s.job || '') ? s.job : '';
+      var current = document.getElementById('job-order').value;
+      if (job && current && current !== job) newDraft();
+      if (job) document.getElementById('job-order').value = job;
+
+      setMaterialsState(s.materials);
+
+      var turnedOn = [];
+      (s.blc.departments || []).forEach(function(key) {
+        var btn = document.getElementById('dept-btn-' + key);
+        if (btn && !btn.classList.contains('active')) { toggleDept(key); turnedOn.push(btn.textContent.trim()); }
+      });
+
+      var have = collectPlannerHardware().map(function(r) { return r.type; });
+      var added = [];
+      /* Skip types the planner already has; the MCS can send several of one
+         type (+ Hardware cards), and each comes with its own Qty/ea. */
+      (s.blc.hardware || []).forEach(function(hw) {
+        if (!HW_CONFIG_MAP[hw.type] || have.indexOf(hw.type) !== -1) return;
+        addHwRow(hw.type, hw.fields, hw.qtyEa || '');
+        added.push(HW_CONFIG_MAP[hw.type].label);
+      });
+
+      if (job) onJobOrderBlur(job);      /* saves the draft under this job # */
+      updateTierUI();
+      /* Corners, Tabs and Pockets on the MCS add their cards here, with
+         nothing picked — Panels and Type are Bindery's call. */
+      var INTERIOR_LABELS = { cb: 'Corners', tabs: 'Tabs', pockets: 'Pockets' };
+      var cardsAdded = [];
+      (s.blc.interior || []).forEach(function(type) {
+        if (!INTERIOR_LABELS[type] || document.getElementById(type + '-card')) return;
+        addInterior(type);
+        cardsAdded.push(INTERIOR_LABELS[type]);
+      });
+
+      showImportStatus('Loaded MCS' + (job ? ' ' + job : '') +
+        ' · departments: ' + (turnedOn.join(', ') || 'none added') +
+        ' · hardware: ' + (added.join(', ') || 'none added') +
+        ' · interior: ' + (cardsAdded.join(', ') || 'none added') +
+        (cardsAdded.length ? ' — choose Panels and Type' : ''));
+    }
+
+    /* =============================================================
+       EXPORT PLANNED PDF  (window.print approach)
+    ============================================================= */
+    var _origPrint = window.print.bind(window);
+
+    /* Interior cards with a toggle nobody has picked — "Corners: Panels". */
+    function missingInteriorChoices() {
+      var out = [];
+      document.querySelectorAll('#interior-cards .brow').forEach(function(card) {
+        var name = card.querySelector('.btype').textContent.trim();
+        card.querySelectorAll('.tog-group').forEach(function(g) {
+          if (g.querySelector('.tog-btn.active')) return;
+          var lab = g.closest('.card-field').querySelector('.lab');
+          out.push(name + ': ' + (lab ? lab.textContent.trim() : 'choice'));
+        });
+      });
+      return out;
+    }
+
+    function doSave() {
+      var state = collectCurrentState();
+      if (!state.jobOrder) { alert('Enter a Job Order # before exporting.'); return; }
+      var missing = missingInteriorChoices();
+      if (missing.length) { alert('Choose these before exporting:\n\n' + missing.join('\n')); return; }
+
+      /* Update the print-date span so the date reads nicely in print */
+      var drVal = document.getElementById('date-received').value;
+      document.getElementById('print-date').textContent = isoToDisplay(drVal) || '—';
+
+      /* Embed state as white-text base64 in the sheet footer */
+      var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+      document.getElementById('stateEmbed').textContent = '%%CS%%' + b64 + '%%CS%%';
+
+      /* Job number in title */
+      document.getElementById('print-job-num').textContent = state.jobOrder || '';
+
+      /* Stage banner */
+      var now = new Date();
+      var dateStr = (now.getMonth()+1) + '/' + now.getDate() + '/' + String(now.getFullYear()).slice(2);
+      document.getElementById('print-stage-banner').textContent = 'PLANNED — ' + dateStr;
+
+      /* Inject card-style print view */
+      document.getElementById('planner-print-view').innerHTML = buildPlannerPrintView(state);
+
+      /* Set document title → becomes the default PDF filename */
+      var origTitle = document.title;
+      document.title = state.jobOrder + ' Preproduction Planned';
+
+      window.addEventListener('afterprint', function onAP() {
+        document.title = origTitle;
+        document.getElementById('stateEmbed').textContent = '';
+        document.getElementById('print-date').textContent = '';
+        document.getElementById('print-job-num').textContent = '';
+        document.getElementById('print-stage-banner').textContent = '';
+        document.getElementById('planner-print-view').innerHTML = '';
+        window.removeEventListener('afterprint', onAP);
+        /* Remove exported draft and start fresh */
+        if (CURRENT_PLANNER_JOB) removePlannerJob(CURRENT_PLANNER_JOB);
+        newDraft();
+      });
+
+      _origPrint();
+    }
+
+    /* Intercept native print dialog */
+    window.print = doSave;
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {
+        e.preventDefault();
+        doSave();
+      }
+    });
+
+    /* =============================================================
+       INIT
+    ============================================================= */
+    /* Default date received to today */
+    document.getElementById('date-received').value = new Date().toISOString().slice(0, 10);
+    updateTierUI();
+
+    /* Show any saved drafts from a previous session */
+    renderPlannerChips();
+
+  </script>
+
+  <!-- Materials section: mount the shared component (Qty and Unit on) -->
+  <script type="module">
+    import { mountMaterials } from '../components/materials/materials.js';
+    import { CATALOG } from '../data/catalog.js';
+    import { hardwareTypes, hardwareSuggest } from '../engines/catalog.js';
+    /* Hardware types and their fields: the catalog, same as the MCS. */
+    setHardwareCatalog(hardwareTypes(CATALOG), hardwareSuggest);
+    mountMaterials(document.getElementById('materials-mount'), {
+      showQty: true,
+      showFunction: document.getElementById('show-function').checked,
+      onChange: function() { updateTierUI(); }
+    }).then(function(api) {
+      materialsSection = api;
+      if (pendingMaterials) api.setState(pendingMaterials);
+      pendingMaterials = null;
+      updateTierUI();
+    }).catch(function(err) { console.error('Materials section failed to load', err); });
+  </script>
+</body>
+</html>

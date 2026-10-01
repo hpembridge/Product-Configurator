@@ -19,7 +19,7 @@
    screw-posts below). Everything else in MCS was a thinner subset.
 
    Shape mirrors CATEGORY_SCHEMAS in material-import.html:
-     id       stable key, also the Firestore doc id if these get stored
+     id       stable key, also the catalog record id
      label    what Creative sees
      qtyLabel unit for the quantity column (per-each unless noted)
      fields   descriptive attributes; options[] drives the datalist

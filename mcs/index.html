@@ -1,0 +1,2974 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu Construction Sheet</title>
+  <link rel="stylesheet" href="../components/materials/materials.css">
+  <style>
+    /* ============================================================
+     COLOR PALETTE  (edit these to retheme the whole sheet)
+     ============================================================ */
+    :root {
+      --accent:         #C9A12C;
+      --on-accent:      #fff;        /* set dynamically based on accent luminance */
+      --ink:            #262626;
+      --muted:          #737373;   /* placeholder text, secondary labels */
+      --surface:        #e2e2e2;   /* section bands, card borders */
+      --status-red:     #fc6251;
+      --status-yellow:  #f0d156;
+      --status-green:   #3ebb63;
+      --padding:        16px 32px;
+    }
+
+    /* Material band: title on the left, row counts on the right */
+    .band--split {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    .count-group .count {
+      font-weight: 400;
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 11px;
+    }
+
+    /* ============================================================
+     PAGE SHELL
+     ============================================================ */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #e8e8e8;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .sheet {
+      width: 11in;
+      min-height: 17in;
+      margin: 18px auto;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+      padding: 0;
+      position: relative;
+    }
+
+    .body {
+      padding: var(--padding);
+    }
+
+    /* ============================================================
+     TITLE BAR
+     ============================================================ */
+    .title {
+      background: var(--accent);
+      color: var(--on-accent);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: var(--padding);
+      padding: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title h1{
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 30px;
+      margin: 0px;
+      padding: 0px;
+      height: fit-content;
+    }
+
+    /* ============================================================
+     SECTION HEADER BAND
+     ============================================================ */
+    .band {
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      margin: 14px 0 0;
+    }
+
+    /* ============================================================
+     STAGE BANNER  (print-only highlighted badge, top-right of meta strip)
+     ============================================================ */
+    .stage-banner {
+      display: none;
+    }
+
+    @media print {
+
+      /* Hide the interactive toggle; show the badge in its place */
+      .stage-wrap,
+      .stage-wrap * {
+        display: none !important;
+      }
+
+      /* Badge always pins to the right (mirrors margin-left:auto on stage-wrap) */
+      .stage-banner {
+        display: block;
+        width: 100%;
+        padding: 4px 12px;
+        margin-bottom: 16px;
+        font-size: 14pt;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        text-align: center;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .stage-banner span {
+        display: none;
+      }
+
+      /* Per-stage colors */
+      body:has(#stage-proof:checked) .stage-banner {
+        background: var(--status-red);
+        color: #fff;
+      }
+
+      body:has(#stage-prototype:checked) .stage-banner {
+        background: var(--status-yellow);
+        color: #000;
+      }
+
+      body:has(#stage-production:checked) .stage-banner {
+        background: var(--status-green);
+        color: #fff;
+      }
+
+      body:has(#stage-proof:checked) .stage-banner .sb-proof {
+        display: inline;
+      }
+
+      body:has(#stage-prototype:checked) .stage-banner .sb-prototype {
+        display: inline;
+      }
+
+      body:has(#stage-production:checked) .stage-banner .sb-production {
+        display: inline;
+      }
+    }
+
+    /* ============================================================
+     META STRIP  (Non-Standard flag + Stage toggle)
+     ============================================================ */
+    .meta-strip {
+      display: flex;
+      align-items: center;
+      padding-bottom: 16px;
+      gap: 16px;
+    }
+
+    /* Stage wrap always pins to the right regardless of NS label visibility */
+    .meta-strip .stage-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    /* Stage toggle: color-coded by selected state */
+    body:has(#stage-proof:checked) #stageToggle label[for="stage-proof"] {
+      background: var(--status-red);
+      color: #fff
+    }
+
+    body:has(#stage-prototype:checked) #stageToggle label[for="stage-prototype"] {
+      background: var(--status-yellow);
+      color: #000;
+    }
+
+    body:has(#stage-production:checked) #stageToggle label[for="stage-production"] {
+      background: var(--status-green);
+      color: #fff;
+    }
+
+    /* Tooltip icon next to non-standard label */
+    .ns-info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid var(--muted);
+      color: var(--muted);
+      font-size: 9px;
+      font-style: normal;
+      font-weight: 700;
+      cursor: default;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+     HEADER BLOCK  (Job Number / Description / Property / Designer)
+     ============================================================ */
+    .header-panel {
+      background: color-mix(in srgb, var(--accent), transparent 80%);
+      border: solid 1px var(--accent);
+      border-radius: 4px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .lab {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: var(--ink);
+    }
+
+    #job-number::placeholder {
+      font-weight: 400;
+    }
+
+    /* boxed fillable field */
+    .box {
+      border: 1.5px solid var(--ink);
+      background: #fff;
+      height: 26px;
+      padding: 3px 7px;
+      font: inherit;
+      font-size: 12px;
+      border-radius: 2px;
+      transition: border-color 0.15s ease;
+    }
+
+    .box:hover {
+      border-color: var(--accent);
+    }
+
+    .box:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+
+    /* ============================================================
+     SECTION CONTENT  (Size Specs, etc.)
+     ============================================================ */
+    .section {
+      padding: 10px 0 13px;
+    }
+
+    .frow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin: 6px 0;
+    }
+
+    .frow .box.md {
+      flex: 1;
+      min-width: 80px;
+    }
+
+    .frow .box.sm {
+      width: 80px;
+      flex-shrink: 0;
+    }
+
+
+
+    .hint {
+      font-style: italic;
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .arrow {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* divider line within a section */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--accent);
+      margin: 10px 0;
+    }
+
+    /* checkbox option */
+    .copt {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-style: italic;
+      font-size: 11.5px;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: pointer;
+      color: var(--ink);
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: solid .5px transparent;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .copt:hover {
+      background: color-mix(in srgb, var(--accent) 12%, #fff);
+      border-color: var(--accent);
+    }
+
+    .copt input[type=checkbox] {
+      accent-color: var(--ink);
+      width: 13px;
+      height: 13px;
+      margin: 0;
+    }
+
+    /* add-button toolbar */
+    .btnrow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 2px;
+    }
+
+    .btnrow .addbtn {
+      margin-top: 0;
+    }
+
+    /* card grid containers */
+    #bindingRows,
+    #decorRows {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btype {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: color-mix(in srgb, var(--accent) 65%, #000);
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--surface);
+    }
+
+    .brow {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid var(--surface);
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+      position: relative;
+    }
+
+    .brow .rm:hover,
+    .drow .rm:hover {
+      background-color: rgb(255, 235, 235);
+    }
+
+    .drow {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid var(--surface);
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+      position: relative;
+    }
+
+    .dctrls {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .card-field .box {
+      width: 100%;
+    }
+
+    /* Input paired with an inline checkbox (e.g. Application + MECH) */
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .field-row .box {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
+    }
+
+    .field-row .copt {
+      flex: 0 0 auto;
+      padding: 4px 4px;
+    }
+
+    .card-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+    }
+
+    .lbreak {
+      flex-basis: 100%;
+      height: 0;
+    }
+
+    /* notes box */
+    .notewrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .drow .msd-btn {
+      border: solid 1px var(--ink);
+      width: 100%;
+    }
+
+    .notebox {
+      flex: 1 1 auto;
+      min-height: 84px;
+      border: 1px solid var(--ink);
+      background: #fff;
+      padding: 7px 8px;
+      font: inherit;
+      font-size: 12px;
+      border-radius: 2px;
+      resize: vertical;
+      transition: border-color 0.15s ease;
+    }
+
+    .notebox:hover {
+      border-color: var(--accent);
+    }
+
+    .notebox:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+
+    .brow .rm,
+    .drow .rm {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+    }
+
+    /* MSD button inside a brow card (e.g. sailcloth edge) */
+    .brow .msd-btn {
+      border: solid 1px var(--ink);
+      width: 100%;
+    }
+
+    /* ── Hardware (hardware-fields.js) ─────────────────────────────
+       A hardware item inside a binding card or a + Hardware card:
+       its catalog fields, then Qty/ea, two to a row. */
+    .hw-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hw-group + .hw-group {
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--surface);
+    }
+
+    .hw-group__title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .hw-group__fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .hw-field--qty .box {
+      text-align: right;
+    }
+
+    .hw-card select.box {
+      width: 100%;
+    }
+
+    .box.grow {
+      flex: 1 1 auto;
+      min-width: 140px;
+    }
+
+    /* ============================================================
+     MATERIAL SECTION  (dynamic)
+     ============================================================ */
+
+    .rm {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 6px;
+      color: var(--status-red);
+      border-radius: 3px;
+      transition: color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .addbtn {
+      margin-top: 8px;
+      border: 1px solid var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, #fff);
+      color: var(--ink);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 5px;
+      cursor: pointer;
+      letter-spacing: .03em;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .addbtn:disabled {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .addbtn:hover {
+      background: color-mix(in srgb, var(--accent) 25%, #fff);
+      border-color: color-mix(in srgb, var(--accent) 75%, #000);
+    }
+
+    .addbtn:active {
+      background: color-mix(in srgb, var(--accent) 38%, #fff);
+    }
+
+    .inputs {
+      display: flex;
+      gap: 16px;
+    }
+
+    .input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .cond-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* ============================================================
+     CATEGORY SELECT  (material table first column)
+     ============================================================ */
+
+    /* ============================================================
+     MATERIAL INPUTS  (dynamic fields in center column)
+     ============================================================ */
+
+    /* Each input is separated by a hairline divider */
+
+    /* Decoration toggle field */
+
+    /* When decoration is revealed, the input inside should flex-grow */
+
+    /* Function detail card inputs — override .msec's transparent/borderless table styles */
+
+    /* MSD inside fn cards: match brow style, fill full width */
+
+    /* Print span — hidden on screen, shown on print in place of inputs */
+
+    @media print {
+
+      /* Hide inputs; show pre-formatted print span instead */
+    }
+
+    /* ============================================================
+     DROP OVERLAY + PRINT FOOTER + STATE EMBED
+     ============================================================ */
+    .drop-overlay {
+      position: fixed;
+      inset: 0;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border: 4px dashed var(--accent);
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .drop-overlay-box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 36px 56px;
+      text-align: center;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+    }
+
+    .drop-overlay-box p {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .drop-overlay-box small {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .print-footer {
+      display: none;
+    }
+
+    #stateEmbed {
+      display: none;
+    }
+
+    /* Hide int table (not button) on screen when empty */
+
+    /* ============================================================
+     PRINT VALIDATION — MODAL + TOAST
+     ============================================================ */
+    .print-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+    }
+
+    .print-modal {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px 24px 20px;
+      max-width: 380px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
+    }
+
+    .print-modal-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      margin: 0 0 8px;
+      color: var(--ink);
+    }
+
+    .print-modal-msg {
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 0 0 20px;
+      color: #555;
+    }
+
+    .print-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .btn-cancel {
+      border: 1px solid var(--surface);
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .btn-cancel:hover {
+      background: #f5f5f2;
+    }
+
+    .btn-confirm {
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: var(--on-accent);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+
+    .btn-confirm:hover {
+      background: color-mix(in srgb, var(--accent) 80%, #000);
+      border-color: color-mix(in srgb, var(--accent) 80%, #000);
+    }
+
+    .print-toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 500;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, .2);
+      white-space: nowrap;
+    }
+
+    .title .lab {
+      color: var(--on-accent);
+    }
+
+    .types label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 2px;
+      border-radius: 4px;
+      border: solid .5px transparent;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .types label:hover {
+      background: color-mix(in srgb, var(--accent) 12%, #fff);
+      border-color: var(--accent);
+    }
+
+    .types label:has(input:checked) {
+      background: var(--surface);
+      border-color: var(--accent);
+    }
+
+    /* ============================================================
+     SEGMENTED TOGGLE (New / Existing)
+     ============================================================ */
+    .seg-toggle {
+      display: inline-flex;
+      border: 1.5px solid var(--ink);
+      border-radius: 3px;
+      overflow: hidden;
+      height: 26px;
+    }
+
+    .seg-toggle input[type=radio] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .seg-toggle label {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border-right: 1px solid var(--ink);
+      transition: background-color 0.15s ease, color 0.15s ease;
+      user-select: none;
+      color: var(--ink);
+      width: 100%;
+    }
+
+    .seg-toggle label:last-of-type {
+      border-right: none;
+    }
+
+    .seg-toggle input:checked+label {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .seg-toggle label:hover {
+      background: color-mix(in srgb, var(--accent) 12%, #fff);
+    }
+
+    .seg-toggle input:checked+label:hover {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .newex-field {
+      gap: 6px;
+    }
+
+    /* ============================================================
+     MULTI-SELECT DROPDOWN
+     ============================================================ */
+    .msd {
+      position: relative;
+      display: inline-block;
+    }
+
+    .msd-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      border: none;
+      background: #fff;
+      padding: 3px 7px;
+      font: inherit;
+      font-size: 11px;
+      border-radius: 2px;
+      cursor: pointer;
+      color: var(--ink);
+      height: 26px;
+      white-space: nowrap;
+      transition: border-color 0.15s ease;
+      border-style: solid;
+      border-width: 0px .5px;
+      border-radius: 0px;
+      border-color: var(--muted);
+    }
+
+    /* Interior Function MSD: full-cell dropdown — no side borders, match table font */
+
+
+    .msd-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .msd-btn:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+
+    .msd-val {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      text-align: left;
+    }
+
+    .msd-caret {
+      font-size: 9px;
+      color: #888;
+      flex-shrink: 0;
+    }
+
+    .msd-panel {
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 0;
+      background: #fff;
+      border: 1px solid var(--ink);
+      border-radius: 4px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
+      z-index: 100;
+      min-width: 100%;
+      padding: 4px 0;
+    }
+
+    .msd-opt {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: background-color 0.1s ease;
+    }
+
+    .msd-opt:hover,
+    .msd-opt:focus {
+      background: color-mix(in srgb, var(--accent) 12%, #fff);
+      outline: none;
+    }
+
+    .msd-opt input[type=checkbox] {
+      accent-color: var(--ink);
+      width: 12px;
+      height: 12px;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    #sailclothEdgeMsd button {
+      border-width: .5px;
+    }
+
+    /* ============================================================
+     TOOLBAR
+     ============================================================ */
+    .toolbar {
+      width: 11in;
+      margin: 16px auto 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* ============================================================
+     ACCENT COLOR PICKER
+     ============================================================ */
+    .accent-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 100%;
+      border: 1.5px solid rgba(0, 0, 0, .18);
+      cursor: pointer;
+      background: var(--accent);
+      position: relative;
+      flex-shrink: 0;
+      transition: border-color 0.15s;
+    }
+
+    .accent-swatch:hover {
+      border-color: rgba(0, 0, 0, .4);
+    }
+
+    .accent-swatch input[type=color] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    .save-pdf-btn {
+      background: var(--accent);
+      color: var(--on-accent);
+      border: 1.5px solid rgba(0, 0, 0, .18);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      letter-spacing: .03em;
+      transition: background-color 0.15s;
+    }
+
+    .save-pdf-btn:hover {
+      background: color-mix(in srgb, var(--accent) 80%, #000);
+    }
+
+    .save-pdf-btn:active {
+      background: color-mix(in srgb, var(--accent) 65%, #000);
+    }
+
+    .ns-label:has(input:checked) {
+        background-color: color-mix(in srgb, var(--status-red) , transparent 80%);
+        border: solid 1px var(--status-red);
+      }
+
+    /* ============================================================
+     PRINT
+     ============================================================ */
+
+    @media print {
+      :root {
+        --accent:     #ffffff;
+        --on-accent:  var(--ink);
+        --ink:        #262626;
+        --muted:   #939393;
+        --surface: #e1e1e1;
+        --padding: 24px;
+      }
+
+      body {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding-top: 0;
+      }
+      .header-panel{
+        padding: 14px 0;
+      }
+      .title {
+        padding-bottom: 0;
+        color: var(--ink);     /* --accent is #fff in print; prevent white-on-white */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* Grid lines and dividers: restore visible gray since --accent is white in print */
+      .divider {
+        border-top-color: #c6c6c6;
+      }
+
+      button:not(.msd-btn):not(.materials__msd-btn) {
+        display: none !important;
+      }
+
+      .types label:has(input:not(:checked)) {
+        display: none;
+      }
+
+      .sheet {
+        box-shadow: none;
+        margin: 0;
+      }
+
+      .print-overlay,
+      .print-toast,
+      .drop-overlay,
+      .toolbar {
+        display: none !important;
+      }
+
+      .print-footer {
+        display: block;
+        position: absolute;
+        bottom: 18pt;
+        right: 24pt;
+        font-size: 8pt;
+        color: #aaa;
+        font-style: italic;
+        letter-spacing: .02em;
+      }
+
+      #stateEmbed {
+        display: block;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        font-size: 4.5pt;
+        font-family: "Courier New", monospace;
+        color: #ffffff;
+        word-break: break-all;
+        line-height: 1.15;
+        padding: 0 24pt 4pt;
+        z-index: 0;
+      }
+
+      .brow,
+      .drow {
+        box-shadow: none;
+        border-color: #d0d0d0;
+      }
+
+
+      .seg-toggle input[type=radio] {
+        display: none;
+      }
+
+      .seg-toggle input:not(:checked)+label {
+        opacity: 20%;
+      }
+
+      
+
+      .msd-btn {
+        background-color: transparent;
+      }
+
+      .msd-caret {
+        display: none;
+      }
+
+      .msd-panel {
+        display: none !important;
+      }
+
+      .colrm {
+        display: none;
+      }
+
+      /* Meta strip: remove decorative border; hide ns-info icon */
+      .meta-strip {
+        border-bottom: none;
+        background: transparent;
+        padding-bottom: 2px;
+      }
+
+      .ns-info {
+        display: none;
+      }
+
+      /* Non-standard label: hide checkbox, hide whole label if unchecked */
+      .ns-label input[type=checkbox] {
+        display: none;
+      }
+
+      .ns-label:not(:has(input:checked)) {
+        display: none;
+      }
+
+      .ns-label:has(input:checked) {
+        background-color: var(--status-red);
+        color: white;
+        font-weight: 800;
+        margin-bottom: 16px;
+      }
+
+      @page {
+        size: 11in 17in;
+        margin: 0;
+      }
+    }
+  </style>
+
+  <!-- Validation Panel styles (screen only) -->
+  <style>
+    #val-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 300px;
+      height: 100vh;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.22s ease;
+      z-index: 9999;
+      box-shadow: -4px 0 16px rgba(0,0,0,0.4);
+    }
+    #val-panel.open { transform: translateX(0); }
+    #val-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: #111;
+      border-bottom: 1px solid #333;
+      flex-shrink: 0;
+    }
+    #val-panel-header span {
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #aaa;
+    }
+    #val-panel-close {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    #val-panel-close:hover { color: #ccc; }
+    #val-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 0;
+    }
+    .vp-section { margin-bottom: 4px; }
+    .vp-section-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px 5px;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #888;
+      border-top: 1px solid #2a2a2a;
+    }
+    .vp-section:first-child .vp-section-title { border-top: none; }
+    .vp-item {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      padding: 3px 14px 3px 22px;
+      line-height: 1.45;
+    }
+    .vp-label { color: #ccc; flex-shrink: 0; }
+    .vp-note {
+      color: #777;
+      font-size: 11px;
+      margin-left: 2px;
+      flex: 1;
+      min-width: 0;
+      word-break: break-word;
+    }
+    .vp-note.warn { color: #c8922a; }
+    .vp-note.fail { color: #cc5555; }
+    .vp-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+      margin-top: 3px;
+    }
+    .vp-dot-pass { background: #4caf50; }
+    .vp-dot-fail { background: #e05252; }
+    .vp-dot-warn { background: #c8922a; }
+    .vp-dot-neutral { background: #555; }
+    .vp-footer {
+      padding: 10px 14px;
+      border-top: 1px solid #2a2a2a;
+      font-size: 10px;
+      color: #555;
+      flex-shrink: 0;
+    }
+    #val-toggle-btn {
+      display: none;
+      font-size: 11px;
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: transparent;
+      color: #555;
+      cursor: pointer;
+      line-height: 1;
+    }
+    #val-toggle-btn:hover { background: #f0f0f0; color: #222; }
+    @media print { #val-panel, #val-toggle-btn { display: none !important; } }
+  </style>
+</head>
+
+<body>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span style="font-size:11px; font-style:italic; color:#888; align-self:center;">Drop a saved sheet anywhere to
+      reload it</span>
+    <span style="display:inline-flex; align-items:center; gap:16px;">
+      <button id="val-toggle-btn" onclick="toggleValidationPanel()">Validation</button>
+      <button class="save-pdf-btn" onclick="doSave()">⬇ Save as PDF</button>
+      <span class="accent-swatch" id="accentSwatch">
+        <input type="color" id="accentPicker" value="#C9A12C" title="Choose accent color">
+      </span>
+    </span>
+  </div>
+
+  <div class="sheet">
+
+    <!-- ===== TITLE BAR ===== -->
+    <div class="title">
+      <h1>Menu Construction Sheet</h1>
+      <div class="inputs">
+        <div class="input-wrap">
+          <span class="lab">Designer:</span>
+          <input style="max-width: 80px;" type="text" class="box sm">
+        </div>
+
+        <div class="input-wrap">
+          <span class="lab">Job Number:</span>
+          <input type="text" id="job-number" class="box sm" inputmode="numeric" pattern="\d{1,6}" maxlength="6"
+            placeholder="000000" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage banner: hidden on screen, highlighted strip on print -->
+
+
+    <div class="body">
+
+      <!-- ===== META STRIP: Non-Standard flag (left) + Stage toggle (right) ===== -->
+      <div class="meta-strip">
+
+        <label class="copt ns-label"
+          title="Check this box when the job uses new materials or unusual construction methods">
+          <input type="checkbox" id="nonStandardCb">
+          Non-Standard Configuration
+        </label>
+        <div class="stage-wrap">
+          <div class="seg-toggle" id="stageToggle">
+            <input type="radio" name="stage" id="stage-proof" value="Proof" checked>
+            <label for="stage-proof">Proof</label>
+            <input type="radio" name="stage" id="stage-prototype" value="Prototype">
+            <label for="stage-prototype">Prototype</label>
+            <input type="radio" name="stage" id="stage-production" value="Production">
+            <label for="stage-production">Production</label>
+          </div>
+        </div>
+        <div class="stage-banner" aria-hidden="true">
+          <span class="sb-proof">For Proof Only</span>
+          <span class="sb-prototype">For Prototype Only</span>
+          <span class="sb-production">For Production</span>
+        </div>
+      </div>
+
+      <!-- ===== SECTION 1: HEADER / JOB INFO (static, fillable) ===== -->
+      <div class="header-panel">
+        <div class="input-wrap">
+          <span class="lab">Management Group</span>
+          <input type="text" class="box grow">
+        </div>
+        <div class="input-wrap">
+          <span class="lab">Property Name</span>
+          <input type="text" class="box grow">
+        </div>
+        <div class="input-wrap">
+          <span class="lab">Job Description</span>
+          <input type="text" class="box grow">
+        </div>
+      </div>
+
+      <!-- ===== SECTION 2: SIZE SPECS (static, fillable) ===== -->
+      <div class="band">Size Specs</div>
+      <div class="section" id="sizeSpecsSection">
+        <div style="display:flex; gap:16px;">
+          <div class="input-wrap">
+            <span class="lab">Cover Size</span>
+            <input type="text" class="box">
+          </div>
+          <div class="input-wrap">
+            <span class="lab">Insert Size</span>
+            <input type="text" class="box">
+          </div>
+          <div class="input-wrap">
+            <span class="lab">Insert Count</span>
+            <input type="text" class="box">
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECTION 3: MATERIAL (shared component: components/materials/) ===== -->
+      <div class="band band--split">
+        Material
+        <div class="count-group">
+          <span class="count" id="extCount">1 ext</span>
+          /
+          <span class="count" id="intCount">0 int</span>
+        </div>
+      </div>
+      <div class="section" id="materials-section">
+        <div id="materials-mount"></div>
+      </div>
+
+      <!-- ===== SECTION 4: CUSTOMIZATIONS (sailcloth + custom board) ===== -->
+      <div class="band">Customizations</div>
+      <div class="section">
+        <div class="btnrow">
+          <button class="addbtn" id="sailclothAdd" onclick="showSailcloth(true)">+ Sailcloth Reveal</button>
+          <button class="addbtn" id="customBoardAdd" onclick="showCustomBoard(true)">+ Custom Board Type</button>
+          <button class="addbtn" id="diecutBoardAdd" onclick="showDiecutBoard(true)">+ Diecut Board</button>
+          <button class="addbtn" id="hardwareAdd" onclick="addHardwareCard()">+ Hardware</button>
+        </div>
+        <div id="customizationRows"
+          style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 8px;">
+
+          <div class="brow" id="sailclothRow" style="display:none;">
+            <span class="btype">Sailcloth Reveal</span>
+            <div class="card-field">
+              <span class="lab">Reveal Size</span>
+              <input type="text" class="box" style="width:100%;">
+            </div>
+            <div class="card-field">
+              <span class="lab">Edge</span>
+              <div class="msd" id="sailclothEdgeMsd" data-placeholder="None Selected">
+                <button type="button" class="msd-btn" onclick="msdToggle(this)" onkeydown="msdBtnKeydown(event,this)">
+                  <span class="msd-val">None Selected</span>
+                  <span class="msd-caret">▾</span>
+                </button>
+                <div class="msd-panel" style="display:none;">
+                  <label class="msd-opt" tabindex="-1" onkeydown="msdOptKeydown(event,this)"><input type="checkbox"
+                      value="Exposed" onchange="msdUpdate(this)"> Exposed</label>
+                  <label class="msd-opt" tabindex="-1" onkeydown="msdOptKeydown(event,this)"><input type="checkbox"
+                      value="Closed" onchange="msdUpdate(this)"> Closed</label>
+                  <label class="msd-opt" tabindex="-1" onkeydown="msdOptKeydown(event,this)"><input type="checkbox"
+                      value="Flush" onchange="msdUpdate(this)"> Flush</label>
+                </div>
+              </div>
+            </div>
+            <button class="rm" title="Remove" onclick="showSailcloth(false)">&times;</button>
+          </div>
+
+          <div class="brow" id="customBoardRow" style="display:none;">
+            <span class="btype">Custom Board Type</span>
+            <div class="card-field">
+              <input type="text" class="box" style="width:100%;">
+            </div>
+            <button class="rm" title="Remove" onclick="showCustomBoard(false)">&times;</button>
+          </div>
+
+          <div class="brow" id="diecutBoardRow" style="display:none;">
+            <span class="btype">Diecut Board</span>
+            <div class="card-field">
+              <span class="lab">Description</span>
+              <input type="text" class="box" style="width:100%;">
+            </div>
+            <div class="card-field newex-field">
+              <div class="seg-toggle">
+                <input type="radio" name="diecutBoardNewEx" id="diecutBoardNewEx-0" value="New"
+                  onchange="newexChange(this)">
+                <label for="diecutBoardNewEx-0">New</label>
+                <input type="radio" name="diecutBoardNewEx" id="diecutBoardNewEx-1" value="Existing"
+                  data-cond="true" onchange="newexChange(this)">
+                <label for="diecutBoardNewEx-1">Existing</label>
+              </div>
+              <div class="cond-input-wrap" style="display:none;"><span class="lab">Job #</span><input type="text"
+                  class="box newex-job"></div>
+            </div>
+            <button class="rm" title="Remove" onclick="showDiecutBoard(false)">&times;</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===== HARDWARE TEMPLATES =====
+           Cloned by hardware-fields.js (hwGroupTemplate, hwFieldTemplate) and
+           addHardwareCard() (hwCardTemplate). One .hw-group per hardware item:
+           a field per catalog field for that type, then Qty/ea. -->
+      <template id="hwGroupTemplate">
+        <div class="hw-group">
+          <span class="hw-group__title"></span>
+          <div class="hw-group__fields"></div>
+        </div>
+      </template>
+      <template id="hwFieldTemplate">
+        <div class="card-field hw-field">
+          <span class="lab"></span>
+          <input type="text" class="box" autocomplete="off">
+        </div>
+      </template>
+      <!-- HardwareCard — "+ Hardware" under Customizations: any hardware that
+           isn't a binding option. Add as many as the job needs. -->
+      <template id="hwCardTemplate">
+        <div class="brow hw-card">
+          <span class="btype">Hardware</span>
+          <div class="card-field">
+            <span class="lab">Type</span>
+            <select class="box hw-card__type">
+              <option value="">Choose hardware…</option>
+            </select>
+          </div>
+          <div class="hw-card__fields"></div>
+          <button class="rm" title="Remove" onclick="removeHardwareCard(this)">&times;</button>
+        </div>
+      </template>
+      <!-- ===== /HARDWARE TEMPLATES ===== -->
+
+      <!-- ===== SECTION 5: BINDING TYPE (build-as-needed) ===== -->
+      <div class="band">Binding Type</div>
+      <div class="section">
+        <div class="btnrow">
+          <button class="addbtn" id="badd-corners" onclick="addBinding('corners')">+ Corners</button>
+          <button class="addbtn" id="badd-tabs" onclick="addBinding('tabs')">+ Tabs</button>
+          <button class="addbtn" id="badd-cord" onclick="addBinding('cord')">+ Menu Cord</button>
+          <button class="addbtn" id="badd-screw" onclick="addBinding('screw')">+ Screwposts</button>
+          <button class="addbtn" id="badd-ring" onclick="addBinding('ring')">+ Ring Binder</button>
+          <button class="addbtn" id="badd-clips" onclick="addBinding('clips')">+ Clips</button>
+          <button class="addbtn" id="badd-bands" onclick="addBinding('bands')">+ Bands</button>
+          <button class="addbtn" id="badd-other" onclick="addBinding('other')">+ Other</button>
+        </div>
+        <div id="bindingRows"></div>
+      </div>
+
+      <!-- ===== SECTION 5: DECORATION (build-as-needed) ===== -->
+      <div class="band">Decoration</div>
+      <div class="section">
+        <div class="btnrow">
+          <button class="addbtn" id="dadd-deboss" onclick="addDecor('deboss')">+ Deboss</button>
+          <button class="addbtn" id="dadd-emboss" onclick="addDecor('emboss')">+ Emboss</button>
+          <button class="addbtn" id="dadd-diecut" onclick="addDecor('diecut')">+ Diecut Window</button>
+          <button class="addbtn" id="dadd-laser" onclick="addDecor('laser')">+ Laser-Cut / Engrave</button>
+          <button class="addbtn" id="dadd-colorprint" onclick="addDecor('colorprint')">+ Color Print</button>
+          <button class="addbtn" id="dadd-sewing" onclick="addDecor('sewing')">+ Sewing</button>
+          <button class="addbtn" id="dadd-other" onclick="addDecor('other')">+ Other</button>
+        </div>
+        <div id="decorRows"></div>
+      </div>
+
+      <!-- ===== SECTION 6: NOTES (conditional) ===== -->
+      <div class="band">Notes</div>
+      <div class="section">
+        <button class="addbtn" id="notesAdd" onclick="showNotes(true)">+ Notes</button>
+        <div class="notewrap" id="notesRow" style="display:none;">
+          <textarea class="notebox"></textarea>
+          <button class="rm" title="Remove" onclick="showNotes(false)">&times;</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Print footer (date + version) — inside sheet so it always renders regardless of browser settings -->
+    <div id="printFooter" class="print-footer"></div>
+
+    <!-- Embedded state data (shows in PDF text layer, invisible on screen) -->
+    <div id="stateEmbed"></div>
+
+  </div>
+
+  <!-- Ext Function autocomplete options -->
+  <datalist id="tipu-mat-list"></datalist>
+  <datalist id="int-mat-list"></datalist>
+  <datalist id="corners-mat-list"></datalist>
+  <datalist id="tabs-mat-list"></datalist>
+  <datalist id="dl-board"><option value="Black Lexide"></datalist>
+
+  <datalist id="dl-ext-function">
+    <option value="Full Wrap">
+    <option value="Front Cover">
+    <option value="Back Cover">
+    <option value="Front & Back Cover">
+    <option value="Sailcloth Reveal">
+  </datalist>
+
+  <!-- Drop overlay -->
+  <div id="dropOverlay" class="drop-overlay" style="display:none;">
+    <div class="drop-overlay-box">
+      <p>Drop PDF to load</p>
+      <small>Must be a PDF generated by this tool</small>
+    </div>
+  </div>
+
+  <!-- Validation Panel -->
+  <div id="val-panel">
+    <div id="val-panel-header">
+      <span>Validation</span>
+      <button id="val-panel-close" onclick="toggleValidationPanel()" title="Close">✕</button>
+    </div>
+    <div id="val-panel-body"></div>
+    <div class="vp-footer">Updates live as you edit. ● block &nbsp;● warn &nbsp;● pass</div>
+  </div>
+
+  <!-- Print validation UI -->
+  <div id="printOverlay" class="print-overlay" style="display:none;">
+    <div class="print-modal">
+      <p class="print-modal-title" id="printModalTitle"></p>
+      <p class="print-modal-msg" id="printModalMsg"></p>
+      <div class="print-modal-actions">
+        <button class="btn-cancel" id="printModalCancel">Cancel</button>
+        <button class="btn-confirm" id="printModalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <div id="printToast" class="print-toast" style="display:none;"></div>
+
+  <script src="material-config.js"></script>
+  <script src="hardware-fields.js"></script>
+  <script>
+    var msdCounter = 0;
+    function msdHtml(placeholder, options, single) {
+      var grp = single ? 'msd-' + (msdCounter++) : null;
+      var opts = options.map(function (o) {
+        var input = single
+          ? '<input type="radio" name="' + grp + '" value="' + o + '" onchange="msdUpdate(this)">'
+          : '<input type="checkbox" value="' + o + '" onchange="msdUpdate(this)">';
+        return '<label class="msd-opt" tabindex="-1" onkeydown="msdOptKeydown(event,this)">' + input + ' ' + o + '</label>';
+      }).join('');
+      return '<div class="msd" data-placeholder="' + placeholder + '">' +
+        '<button type="button" class="msd-btn" onclick="msdToggle(this)" onkeydown="msdBtnKeydown(event,this)">' +
+        '<span class="msd-val">' + placeholder + '</span>' +
+        '<span class="msd-caret">▾</span></button>' +
+        '<div class="msd-panel" style="display:none;">' + opts + '</div></div>';
+    }
+
+    /* ── Materials section (shared component) ──────────────────────
+       The Exterior / Interior tables are components/materials/. The module
+       script at the bottom of this file mounts it into #materials-mount and
+       sets materialsSection; until the catalog loads, a state to restore is
+       held in pendingMaterials. */
+    var materialsSection = null;
+    var pendingMaterials = null;
+
+    function getMaterialsState() {
+      return materialsSection ? materialsSection.getState() : (pendingMaterials || { ext: [], int: [], fnCards: [], ccInt: false });
+    }
+    function setMaterialsState(m) {
+      if (materialsSection) materialsSection.setState(m);
+      else pendingMaterials = m;
+    }
+
+    /* Saved sheets store the section under s.materials. Sheets saved before
+       the shared component stored s.ext / s.int with values by position;
+       convert those using the old field list in material-config.js. */
+    function materialsFromSaved(s) {
+      if (s.materials) return s.materials;
+      function legacyFields(label, values) {
+        var cfg = MATERIAL_CONFIG.fields[label];
+        var ids = cfg ? cfg.inputs.filter(function (f) { return f.type !== 'decoration'; }).map(function (f) { return f.id; }) : [];
+        var out = {};
+        ids.forEach(function (id, i) { if (values && values[i]) out[id] = values[i]; });
+        return out;
+      }
+      function legacyRow(rd) {
+        var label = rd.cat || (rd.t && rd.t[0]) || '';
+        var fields = legacyFields(label, rd.mat || (rd.m ? [rd.m] : []));
+        if (rd.decor) fields.decoration = rd.decor;
+        return { cat: label.toLowerCase().replace(/\s+/g, '-'), fields: fields, fn: rd.fn || '', fnArr: rd.fnArr || [] };
+      }
+      return { ext: (s.ext || []).map(legacyRow), int: (s.int || []).map(legacyRow), fnCards: s.fnCards || [], ccInt: !!s.ccInt };
+    }
+
+    function updateMaterialCounts(counts) {
+      document.getElementById('extCount').textContent = counts.ext + ' ext';
+      document.getElementById('intCount').textContent = counts.int + ' int';
+    }
+    function msdToggle(btn) {
+      var panel = btn.nextElementSibling;
+      var isOpen = panel.style.display !== 'none';
+      document.querySelectorAll('.msd-panel').forEach(function (p) { p.style.display = 'none'; });
+      if (!isOpen) panel.style.display = 'block';
+    }
+    function msdUpdate(input) {
+      var msd = input.closest('.msd');
+      var checked = Array.from(msd.querySelectorAll('input:checked')).map(function (i) { return i.value; });
+      msd.querySelector('.msd-val').textContent = checked.length ? checked.join(', ') : msd.dataset.placeholder;
+      if (input.type === 'radio') msd.querySelector('.msd-panel').style.display = 'none';
+    }
+
+    /* ── Function detail cards ─────────────────────────────────────
+       Appear below the material tables when interior functions are selected.
+    ─────────────────────────────────────────────────────────────── */
+    function msdReset(container) {
+      container.querySelectorAll('.msd').forEach(function (msd) {
+        msd.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = false; });
+        msd.querySelector('.msd-val').textContent = msd.dataset.placeholder;
+        msd.querySelector('.msd-panel').style.display = 'none';
+      });
+    }
+    function setDatalistOptions(id, values) {
+      var dl = document.getElementById(id);
+      if (!dl) return;
+      dl.replaceChildren.apply(dl, values.map(function (v) {
+        var o = document.createElement('option'); o.value = v; return o;
+      }));
+    }
+    /** Tip-In / Underlay Material suggestions: every material row. */
+    function refreshTipuMatList() {
+      setDatalistOptions('tipu-mat-list', materialsSection ? materialsSection.summaries() : []);
+    }
+    /** Corners / Tabs material suggestions, like Underlay but from interior
+     *  rows: rows with that Function checked come first, then the other
+     *  interior materials, then the standard "Regular Black". */
+    function refreshCornerTabList(fn) {
+      var tagged = materialsSection ? materialsSection.summaries('int', fn) : [];
+      var rest = materialsSection ? materialsSection.summaries('int') : [];
+      var seen = {};
+      setDatalistOptions(fn.toLowerCase() + '-mat-list', tagged.concat(rest, ['Regular Black']).filter(function (v) {
+        if (seen[v]) return false;
+        seen[v] = true;
+        return true;
+      }));
+    }
+    /** Corners / Tabs Board suggestions: the interior material rows, then
+     *  the standard "Black Lexide". */
+    function refreshBoardList() {
+      var rows = materialsSection ? materialsSection.summaries('int') : [];
+      var seen = {};
+      setDatalistOptions('dl-board', rows.concat(['Black Lexide']).filter(function (v) {
+        if (seen[v]) return false;
+        seen[v] = true;
+        return true;
+      }));
+    }
+    /** Material suggestions from the interior material rows only. */
+    function refreshIntMatList() {
+      setDatalistOptions('int-mat-list', materialsSection ? materialsSection.summaries('int') : []);
+    }
+    function tipuChange(radio) {
+      var field = radio.closest('.newex-field');
+      var wrap = field.querySelector('.cond-input-wrap');
+      wrap.querySelector('.tipu-lab').textContent = radio.value === 'Tip-In' ? 'Tip-In Material' : 'Underlay Material';
+      wrap.style.display = '';
+      wrap.querySelector('input').value = '';
+      refreshTipuMatList();
+    }
+    function cfToggle(cb) {
+      var field = cb.closest('.newex-field');
+      var input = field.querySelector('input[type=text]');
+      input.style.display = cb.checked ? '' : 'none';
+      if (!cb.checked) input.value = '';
+    }
+    function newexChange(radio) {
+      var field = radio.closest('.newex-field');
+      if (!field) return;
+      var wrap = field.querySelector('.cond-input-wrap');
+      if (wrap) {
+        var show = radio.dataset.cond === 'true';
+        wrap.style.display = show ? '' : 'none';
+        if (!show) wrap.querySelector('input').value = '';
+      }
+    }
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.msd')) {
+        document.querySelectorAll('.msd-panel').forEach(function (p) { p.style.display = 'none'; });
+      }
+    });
+    /* ── Stage + Non-standard helpers ──────────────────────────── */
+
+    function getStage() {
+      var checked = document.querySelector('#stageToggle input:checked');
+      return checked ? checked.value : 'Proof';
+    }
+
+    function nudgeNonStandard() {
+      if (!document.getElementById('nonStandardCb').checked) {
+        showToast('Heads up: this may be a non-standard configuration — consider checking the flag at the top.');
+      }
+    }
+
+    /* ── Material config helpers ───────────────────────────────── */
+
+    /** Build all shared <datalist> elements once at page load. */
+    /** Build the category <select> HTML for a section.
+     *  Interior only shows categories with interior: true. */
+    /** Rebuild the Material cell when a category is chosen. */
+    /** Update the hidden print span for a material row from the current field values. */
+    /** Reveal the decoration text input when the button is clicked. */
+    /** Collapse the decoration field back to the + button. */
+    function showCustomBoard(on) {
+      document.getElementById('customBoardRow').style.display = on ? 'flex' : 'none';
+      document.getElementById('customBoardAdd').disabled = on;
+      if (!on) document.getElementById('customBoardRow').querySelector('input[type=text]').value = '';
+    }
+
+    function showDiecutBoard(on) {
+      var row = document.getElementById('diecutBoardRow');
+      row.style.display = on ? 'flex' : 'none';
+      document.getElementById('diecutBoardAdd').disabled = on;
+      if (!on) {
+        row.querySelectorAll('input[type=text]').forEach(function (i) { i.value = ''; });
+        row.querySelectorAll('input[type=radio]').forEach(function (r) { r.checked = false; });
+        var wrap = row.querySelector('.cond-input-wrap');
+        if (wrap) wrap.style.display = 'none';
+      }
+    }
+
+    function showSailcloth(on) {
+      document.getElementById('sailclothRow').style.display = on ? 'flex' : 'none';
+      document.getElementById('sailclothAdd').disabled = on;
+      if (!on) {
+        var row = document.getElementById('sailclothRow');
+        row.querySelectorAll('input[type=text]').forEach(function (i) { i.value = ''; });
+        msdReset(row);
+      }
+    }
+    var BINDING_ORDER = ['corners', 'tabs', 'cord', 'screw', 'ring', 'clips', 'bands', 'other'];
+    var DECOR_ORDER = ['deboss', 'emboss', 'diecut', 'laser', 'colorprint', 'sewing', 'other'];
+    function insertOrdered(containerId, el, key, order) {
+      var container = document.getElementById(containerId);
+      var idx = order.indexOf(key);
+      var siblings = container.children;
+      for (var i = 0; i < siblings.length; i++) {
+        var sib = siblings[i];
+        var sibKey = sib.dataset.key || sib.id.replace(/^[bd]row-/, '');
+        if (order.indexOf(sibKey) > idx) {
+          container.insertBefore(el, siblings[i]);
+          return;
+        }
+      }
+      container.appendChild(el);
+    }
+    /* ── Handoff to the BLC ─────────────────────────────────────────
+       Saved with the sheet (s.blc) so the BLC planner can pre-select
+       production departments and add hardware rows when this PDF is
+       uploaded there. Departments come from the catalog: decorations and
+       material categories carry them. Binding types map to BLC hardware
+       types here. */
+    var BINDING_HARDWARE = {
+      cord:  ['elastic-cords', 'eyelets'],
+      screw: ['screw-posts'],
+      ring:  ['ring-binder'],
+      clips: ['clips'],
+      bands: ['bands']
+    };
+
+    function blcHandoff(s) {
+      var cat = window.mcsCatalog;
+      var found = {};
+      if (cat) {
+        Object.keys(s.decor || {}).forEach(function (key) {
+          if (!s.decor[key] || !s.decor[key].length) return;
+          var d = cat.decorations.filter(function (x) { return x.id === key; })[0];
+          ((d && d.departments) || []).forEach(function (id) { found[id] = true; });
+        });
+        var m = s.materials || {};
+        (m.ext || []).concat(m.int || []).forEach(function (r) {
+          var mc = r.cat && cat.matcats[r.cat];
+          ((mc && mc.departments) || []).forEach(function (id) { found[id] = true; });
+        });
+      }
+      var departments = cat
+        ? cat.departments.slice().sort(function (a, b) { return a.order - b.order; })
+            .map(function (d) { return d.id; }).filter(function (id) { return found[id]; })
+        : [];
+
+      /* Binding cards and + Hardware cards, as BLC hardware rows:
+         { type, fields: { fieldId: value }, qtyEa }. Field ids are the
+         catalog's; the BLC fills the ones its own list shares. */
+      var hardware = [];
+      Object.keys(s.bind || {}).forEach(function (key) {
+        (BINDING_HARDWARE[key] || []).forEach(function (type) {
+          var fields = Object.assign({}, (s.bind[key].hw || {})[type] || {});
+          var qtyEa = fields.qtyEa || ''; delete fields.qtyEa;
+          hardware.push({ type: type, fields: fields, qtyEa: qtyEa, from: key });
+        });
+      });
+      (s.hw || []).forEach(function (h) {
+        if (h.type) hardware.push({ type: h.type, fields: h.fields || {}, qtyEa: h.qtyEa || '', from: 'customizations' });
+      });
+      /* Interior cards for the BLC: Corners and Tabs binding cards, and
+         Pockets as a Function on any interior material row. The BLC adds
+         them with nothing picked. */
+      var interior = [];
+      if (s.bind && s.bind.corners) interior.push('cb');
+      if (s.bind && s.bind.tabs) interior.push('tabs');
+      var mats = s.materials || {};
+      if ((mats.int || []).some(function (r) { return (r.fnArr || []).indexOf('Pockets') !== -1; })) interior.push('pockets');
+
+      return { departments: departments, hardware: hardware, interior: interior };
+    }
+
+    var BINDING = {
+      corners: { label: "Corners", fields: [{ l: "Corners", ac: "corners-mat-list" }, { l: "Board", ac: "dl-board" }] },
+      tabs: { label: "Tabs", fields: [{ l: "Tabs", ac: "tabs-mat-list" }, { l: "Board", ac: "dl-board" }] },
+      /* hw: the catalog hardware each card is made of, in order. Its fields
+         (from Reference Data → Edit hardware) replace the old free-text
+         Size / Color, and come first in the card. */
+      cord: { label: "Menu Cord", hw: [{ type: 'elastic-cords', title: 'Cord' }, { type: 'eyelets', title: 'Eyelets' }], fields: [] },
+      ring: { label: "Ring Binder", hw: [{ type: 'ring-binder' }], fields: [] },
+      screw: { label: "Screwposts", hw: [{ type: 'screw-posts' }], fields: ["Distance Apart", { l: "Application", cb: { label: "MECH", condLabel: "Material", ac: "int-mat-list" } }] },
+      clips: { label: "Clips", hw: [{ type: 'clips' }], fields: [] },
+      bands: { label: "Bands", hw: [{ type: 'bands' }], fields: [] },
+      other: { label: "Other", fields: [null] }
+    };
+    function addBinding(key) {
+      if (key === 'other') nudgeNonStandard();
+      var cfg = BINDING[key];
+      var row = document.createElement('div');
+      row.className = 'brow';
+      row.id = 'brow-' + key;
+      var html = '<span class="btype">' + cfg.label + '</span>';
+      cfg.fields.forEach(function (f) {
+        if (f === null) { html += '<div class="card-field"><textarea class="notebox" style="width:100%;min-height:60px;"></textarea></div>'; }
+        else {
+          var label = typeof f === 'object' ? f.l : f;
+          var acAttr = (typeof f === 'object' && f.ac) ? ' list="' + f.ac + '"' : '';
+          var cb = (typeof f === 'object' && f.cb) ? f.cb : null;
+          if (cb) {
+            html += '<div class="card-field newex-field">' +
+              (label ? '<span class="lab">' + label + '</span>' : '') +
+              '<div class="field-row">' +
+              '<input type="text" class="box"' + acAttr + '>' +
+              '<label class="copt"><input type="checkbox" onchange="bindCbToggle(this)">' + cb.label + '</label>' +
+              '</div>' +
+              '<div class="cond-input-wrap" style="display:none;"><span class="lab">' + cb.condLabel + '</span><input type="text" class="box"' + (cb.ac ? ' list="' + cb.ac + '"' : '') + '></div>' +
+              '</div>';
+          }
+          else if (label) { html += '<div class="card-field"><span class="lab">' + label + '</span><input type="text" class="box"' + acAttr + '></div>'; }
+          else { html += '<div class="card-field"><input type="text" class="box"' + acAttr + '></div>'; }
+        }
+      });
+      html += '<button class="rm" title="Remove" onclick="removeBinding(\'' + key + '\')">&times;</button>';
+      row.innerHTML = html;
+      /* Hardware first, straight under the card title. */
+      if (cfg.hw && window.mcsHardware) {
+        var hwHost = document.createElement('div');
+        hwHost.className = 'hw-groups';
+        cfg.hw.forEach(function (h) { mcsHardware.mountGroup(hwHost, h.type, { title: cfg.hw.length > 1 ? h.title : '' }); });
+        row.querySelector('.btype').after(hwHost);
+      }
+      insertOrdered('bindingRows', row, key, BINDING_ORDER);
+      document.getElementById('badd-' + key).disabled = true;
+      row.querySelectorAll('input[list="int-mat-list"]').forEach(function (inp) {
+        inp.addEventListener('focus', refreshIntMatList);
+      });
+      row.querySelectorAll('input[list="dl-board"]').forEach(function (inp) {
+        inp.addEventListener('focus', refreshBoardList);
+      });
+      row.querySelectorAll('input[list="corners-mat-list"]').forEach(function (inp) {
+        inp.addEventListener('focus', function () { refreshCornerTabList('Corners'); });
+      });
+      row.querySelectorAll('input[list="tabs-mat-list"]').forEach(function (inp) {
+        inp.addEventListener('focus', function () { refreshCornerTabList('Tabs'); });
+      });
+    }
+    /** Toggle a conditional field revealed by a checkbox inside a binding card
+     *  (e.g. the MECH checkbox next to Screwposts Application). */
+    function bindCbToggle(cb) {
+      var field = cb.closest('.newex-field');
+      if (!field) return;
+      var wrap = field.querySelector('.cond-input-wrap');
+      if (!wrap) return;
+      wrap.style.display = cb.checked ? '' : 'none';
+      if (!cb.checked) wrap.querySelector('input').value = '';
+    }
+    function removeBinding(key) {
+      var row = document.getElementById('brow-' + key);
+      if (row) row.remove();
+      document.getElementById('badd-' + key).disabled = false;
+    }
+
+    /* ── + Hardware (Customizations) ─────────────────────────────────
+       Any hardware that isn't a binding option. Pick the type, then its
+       fields appear. Repeatable: one card per hardware item. */
+    function addHardwareCard(saved) {
+      var card = document.getElementById('hwCardTemplate').content.firstElementChild.cloneNode(true);
+      var sel = card.querySelector('.hw-card__type');
+      mcsHardware.nonBindingTypes().forEach(function (t) { sel.appendChild(new Option(t.label, t.id)); });
+      sel.addEventListener('change', function () { setHardwareCardType(card, sel.value); });
+      document.getElementById('customizationRows').appendChild(card);
+      if (saved && saved.type) {
+        sel.value = saved.type;
+        if (sel.value !== saved.type) sel.appendChild(new Option(saved.type, saved.type, true, true));   // type since removed from the catalog
+        setHardwareCardType(card, saved.type);
+        mcsHardware.fillGroup(card.querySelector('.hw-group'), Object.assign({}, saved.fields, { qtyEa: saved.qtyEa || '' }));
+      } else sel.focus();
+      return card;
+    }
+    function setHardwareCardType(card, typeId) {
+      var host = card.querySelector('.hw-card__fields');
+      host.replaceChildren();
+      var t = mcsHardware.type(typeId);
+      card.querySelector('.btype').textContent = t ? t.label : (typeId || 'Hardware');
+      if (typeId) mcsHardware.mountGroup(host, typeId);
+    }
+    function removeHardwareCard(btn) { btn.closest('.hw-card').remove(); }
+    /* [{ type, fields: { fieldId: value }, qtyEa }] — same shape as BLC hardware rows. */
+    function readHardwareCards() {
+      return Array.from(document.querySelectorAll('#customizationRows .hw-card')).map(function (card) {
+        var g = card.querySelector('.hw-group');
+        var v = g ? mcsHardware.readGroup(g) : {};
+        var qtyEa = v.qtyEa || ''; delete v.qtyEa;
+        return { type: card.querySelector('.hw-card__type').value, fields: v, qtyEa: qtyEa };
+      });
+    }
+    var DECOR = {
+      deboss: {
+        label: "Deboss", items: [
+          { k: 'f', l: 'Location', w: 'md' },
+          { k: 'newex', jobNum: true },
+          { k: 'newex', opt1: 'Blind', opt2: 'Foil', condPh: 'Foil Color' },
+          { k: 'msd', label: 'Die Type', l: 'No Die Type Selected', opts: ['Brass', 'Magnesium', 'River City'], single: true }
+        ]
+      },
+      laser: {
+        label: "Laser-Cut / Engrave", items: [
+          { k: 'f', l: 'Location', w: 'md' },
+          { k: 'newex', opt1: 'Engrave', opt2: 'Laser-Cut', condPh: 'Underlay', matAc: true }
+        ]
+      },
+      colorprint: {
+        label: "Color Print", items: [
+          { k: 'ta', l: 'Information' }
+        ]
+      },
+      emboss: {
+        label: "Emboss", items: [
+          { k: 'f', l: 'Location', w: 'md' },
+          { k: 'newex', jobNum: true }
+        ]
+      },
+      diecut: {
+        label: "Diecut Window", items: [
+          { k: 'f', l: 'Location', w: 'md' },
+          { k: 'newex', jobNum: true },
+          { k: 'f', l: 'Size', w: 'sm' },
+          { k: 'tipu' }
+        ]
+      },
+      sewing: {
+        label: "Sewing", items: [
+          { k: 'ta', l: 'Description' }
+        ]
+      },
+      other: { label: "Other", items: [{ k: 'ta' }] }
+    };
+    var _decorUid = 0;
+    function addDecor(key) {
+      if (key === 'other') nudgeNonStandard();
+      var cfg = DECOR[key];
+      var uid = key + '-' + (_decorUid++);
+      var row = document.createElement('div');
+      row.className = 'drow';
+      row.id = 'drow-' + uid;
+      row.dataset.key = key;
+      var ctrls = '';
+      cfg.items.forEach(function (it) {
+        if (it.k === 'f') { ctrls += '<div class="card-field"><span class="lab">' + it.l + '</span><input type="text" class="box"></div>'; }
+        else if (it.k === 'c') { ctrls += '<label class="copt"><input type="checkbox">' + it.l + '</label>'; }
+        else if (it.k === 'tipu') {
+          var rname = uid + '-tipu';
+          ctrls += '<div class="card-field newex-field">' +
+            '<div class="seg-toggle" data-tipu="true">' +
+            '<input type="radio" name="' + rname + '" id="' + rname + '-0" value="Tip-In" onchange="tipuChange(this)">' +
+            '<label for="' + rname + '-0">Tip-In</label>' +
+            '<input type="radio" name="' + rname + '" id="' + rname + '-1" value="Underlay" onchange="tipuChange(this)">' +
+            '<label for="' + rname + '-1">Underlay</label>' +
+            '</div>' +
+            '<div class="cond-input-wrap" style="display:none;"><span class="lab tipu-lab"></span><input type="text" class="box tipu-mat" list="tipu-mat-list"></div>' +
+            '</div>';
+        }
+        else if (it.k === 'cf') {
+          ctrls += '<div class="card-field newex-field">' +
+            '<label class="copt"><input type="checkbox" onchange="cfToggle(this)">' + it.l + '</label>' +
+            '<input type="text" class="box" placeholder="' + (it.ph || '') + '" style="display:none;">' +
+            '</div>';
+        }
+        else if (it.k === 'br') { /* no-op in column layout */ }
+        else if (it.k === 'grow') { ctrls += '<div class="card-field"><input type="text" class="box"></div>'; }
+        else if (it.k === 'ta') { ctrls += '<div class="card-field">' + (it.l ? '<span class="lab">' + it.l + '</span>' : '') + '<textarea class="notebox" style="width:100%;min-height:60px;"></textarea></div>'; }
+        else if (it.k === 'msd') { ctrls += '<div class="card-field">' + (it.label ? '<span class="lab">' + it.label + '</span>' : '') + msdHtml(it.l, it.opts, it.single) + '</div>'; }
+        else if (it.k === 'newex') {
+          var opt1 = it.opt1 || 'New';
+          var opt2 = it.opt2 || 'Existing';
+          // Use uid (not key) so multiple instances have independent radio groups
+          var rname = uid + '-' + opt1.toLowerCase().replace(/\s+/g, '-');
+          var hasCond = it.jobNum || !!it.condPh;
+          var condPh = it.condPh || 'Job #';
+          var condInput = hasCond
+            ? '<div class="cond-input-wrap" style="display:none;"><span class="lab">' + condPh + '</span><input type="text" class="box newex-job"' + (it.matAc ? ' list="tipu-mat-list"' : '') + '></div>'
+            : '';
+          ctrls += '<div class="card-field newex-field">' +
+            '<div class="seg-toggle">' +
+            '<input type="radio" name="' + rname + '" id="' + rname + '-0" value="' + opt1 + '" onchange="newexChange(this)">' +
+            '<label for="' + rname + '-0">' + opt1 + '</label>' +
+            '<input type="radio" name="' + rname + '" id="' + rname + '-1" value="' + opt2 + '"' + (hasCond ? ' data-cond="true"' : '') + ' onchange="newexChange(this)">' +
+            '<label for="' + rname + '-1">' + opt2 + '</label>' +
+            '</div>' + condInput + '</div>';
+        }
+      });
+      row.innerHTML = '<span class="btype">' + cfg.label + '</span>' +
+        '<div class="dctrls">' + ctrls + '</div>' +
+        '<button class="rm" title="Remove" onclick="removeDrow(\'' + uid + '\')">&times;</button>';
+      insertOrdered('decorRows', row, key, DECOR_ORDER);
+      renumberDecor(key);
+      row.querySelectorAll('input[list="tipu-mat-list"]').forEach(function (inp) {
+        inp.addEventListener('focus', refreshTipuMatList);
+      });
+      // Add buttons are never hidden — multiple instances per type are allowed
+    }
+    function renumberDecor(key) {
+      var rows = Array.from(document.querySelectorAll('.drow[data-key="' + key + '"]'));
+      var label = DECOR[key].label;
+      rows.forEach(function (row, i) {
+        row.querySelector('.btype').textContent = rows.length > 1 ? label + ' ' + (i + 1) : label;
+      });
+    }
+    function removeDrow(uid) {
+      var r = document.getElementById('drow-' + uid);
+      if (!r) return;
+      var key = r.dataset.key;
+      r.remove();
+      renumberDecor(key);
+    }
+    function showNotes(on) {
+      document.getElementById('notesRow').style.display = on ? 'flex' : 'none';
+      document.getElementById('notesAdd').disabled = on;
+      if (!on) { document.getElementById('notesRow').querySelector('textarea').value = ''; }
+    }
+    // ── MSD keyboard navigation ───────────────────────────────────
+
+    function msdBtnKeydown(e, btn) {
+      var panel = btn.nextElementSibling;
+      var isOpen = panel.style.display !== 'none';
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!isOpen) msdToggle(btn);
+        var first = panel.querySelector('.msd-opt');
+        if (first) first.focus();
+      } else if (e.key === 'ArrowUp' && !isOpen) {
+        var td = btn.closest('td');
+        if (td) {
+          e.preventDefault();
+          var tr = td.closest('tr');
+          var colIdx = Array.from(tr.cells).indexOf(td);
+          var rows = Array.from(tr.closest('tbody').rows);
+          var prev = rows[rows.indexOf(tr) - 1];
+          if (prev) {
+            var el = prev.cells[colIdx].querySelector('.msd-btn, input[type=text]');
+            if (el) el.focus();
+          }
+        }
+      } else if (e.key === 'Escape' && isOpen) {
+        e.preventDefault();
+        panel.style.display = 'none';
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!isOpen) msdToggle(btn);
+        var letter = e.key.toLowerCase();
+        var match = Array.from(panel.querySelectorAll('.msd-opt')).find(function (o) {
+          return o.textContent.trim().toLowerCase().startsWith(letter);
+        });
+        if (match) { e.preventDefault(); match.focus(); }
+      }
+    }
+
+    function msdOptKeydown(e, label) {
+      var panel = label.closest('.msd-panel');
+      var msd = label.closest('.msd');
+      var opts = Array.from(panel.querySelectorAll('.msd-opt'));
+      var idx = opts.indexOf(label);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (idx < opts.length - 1) opts[idx + 1].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) opts[idx - 1].focus();
+        else { panel.style.display = 'none'; msd.querySelector('.msd-btn').focus(); }
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        var inp = label.querySelector('input');
+        if (inp.type === 'radio') {
+          inp.checked = true; msdUpdate(inp);
+          panel.style.display = 'none'; msd.querySelector('.msd-btn').focus();
+        } else {
+          inp.checked = !inp.checked; msdUpdate(inp);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        panel.style.display = 'none'; msd.querySelector('.msd-btn').focus();
+      } else if (e.key === 'Tab') {
+        panel.style.display = 'none'; // let Tab bubble
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        var letter = e.key.toLowerCase();
+        for (var i = 1; i <= opts.length; i++) {
+          var j = (idx + i) % opts.length;
+          if (opts[j].textContent.trim().toLowerCase().startsWith(letter)) {
+            e.preventDefault(); opts[j].focus(); break;
+          }
+        }
+      }
+    }
+
+    // ── Designer field persistence ────────────────────────────────
+    var designerEl = document.querySelectorAll('.title .box')[0];
+    if (designerEl) {
+      var saved = localStorage.getItem('mcs_designer');
+      if (saved) designerEl.value = saved;
+      designerEl.addEventListener('input', function () {
+        localStorage.setItem('mcs_designer', designerEl.value);
+      });
+    }
+
+    // ── Print validation ──────────────────────────────────────────
+
+    function showToast(msg) {
+      var el = document.getElementById('printToast');
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(function () { el.style.display = 'none'; }, 4000);
+    }
+
+    function showModal(title, msg, confirmLabel, onConfirm) {
+      document.getElementById('printModalTitle').textContent = title;
+      document.getElementById('printModalMsg').textContent = msg;
+      document.getElementById('printModalConfirm').textContent = confirmLabel;
+      var overlay = document.getElementById('printOverlay');
+      overlay.style.display = 'flex';
+      document.getElementById('printModalConfirm').onclick = function () {
+        overlay.style.display = 'none';
+        onConfirm();
+      };
+      document.getElementById('printModalCancel').onclick = function () {
+        overlay.style.display = 'none';
+      };
+    }
+
+    function runPrintValidation(proceed) {
+
+      // ── Hard blocks ───────────────────────────────────────────────
+
+      var designerEl = document.querySelectorAll('.title .box')[0];
+      if (!designerEl || !designerEl.value.trim()) {
+        showToast('Designer is required before saving.');
+        return;
+      }
+
+      var jobEl = document.getElementById('job-number');
+      var jobVal = jobEl ? jobEl.value.trim() : '';
+      if (!jobVal) {
+        showToast('Job number is required before saving.');
+        return;
+      }
+      if (!/^\d{6}$/.test(jobVal)) {
+        showToast('Job number must be 6 digits.');
+        return;
+      }
+
+      // ── Binding & decoration validation ───────────────────────────
+
+      function doBindingDecorCheck() {
+        var incomplete = [];
+
+        document.querySelectorAll('.brow').forEach(function (card) {
+          // Skip hidden cards (sailcloth/customboard when not added)
+          if (card.style.display === 'none') return;
+
+          var label = card.querySelector('.btype').textContent.trim();
+          var hasIssue = false;
+          card.querySelectorAll('input[type=text], textarea').forEach(function (inp) {
+            var wrap = inp.closest('.cond-input-wrap');
+            var hidden = wrap ? wrap.style.display === 'none' : inp.style.display === 'none';
+            if (!hidden && !inp.value.trim()) hasIssue = true;
+          });
+          card.querySelectorAll('.seg-toggle').forEach(function (tog) {
+            if (!tog.querySelector('input:checked')) hasIssue = true;
+          });
+          var hwType = card.querySelector('.hw-card__type');
+          if (hwType && !hwType.value) hasIssue = true;
+          if (hasIssue) incomplete.push(label);
+        });
+
+        var dieTypeWarnings = [];
+        document.querySelectorAll('.drow').forEach(function (card) {
+          var label = card.querySelector('.btype').textContent.trim();
+          var hasIssue = false;
+          var hasDieTypeOnly = false;
+          var d = card.querySelector('.dctrls');
+          // Visible text inputs and textareas
+          d.querySelectorAll('input[type=text], textarea').forEach(function (inp) {
+            var wrap = inp.closest('.cond-input-wrap');
+            var hidden = wrap ? wrap.style.display === 'none' : inp.style.display === 'none';
+            if (!hidden && !inp.value.trim()) hasIssue = true;
+          });
+          // Seg-toggles: one must be selected
+          d.querySelectorAll('.seg-toggle').forEach(function (tog) {
+            if (!tog.querySelector('input:checked')) hasIssue = true;
+          });
+          // MSD dropdowns: must not be at placeholder (die type is a soft warning, not a hard block)
+          d.querySelectorAll('.msd').forEach(function (msd) {
+            var val = msd.querySelector('.msd-val').textContent.trim();
+            if (val === (msd.dataset.placeholder || '')) {
+              if (msd.dataset.placeholder === 'No Die Type Selected') {
+                hasDieTypeOnly = true;
+              } else {
+                hasIssue = true;
+              }
+            }
+          });
+          if (hasIssue) incomplete.push(label);
+          else if (hasDieTypeOnly) dieTypeWarnings.push(label);
+        });
+
+        if (incomplete.length > 0) {
+          showToast('Please remove or complete all fields on: ' + incomplete.join(', ') + '.');
+          return;
+        }
+        if (dieTypeWarnings.length > 0) {
+          showModal(
+            'No die type selected',
+            'No die type is selected on: ' + dieTypeWarnings.join(', ') + '. You can save anyway or cancel to go back and select one.',
+            'Save Anyway',
+            doMaterialValidation
+          );
+          return;
+        }
+        doMaterialValidation();
+      }
+
+      function doMaterialValidation() {
+        var check = materialsSection ? materialsSection.validate() : { hasExterior: false, empty: 0, incomplete: 0 };
+        if (!check.hasExterior) {
+          showToast('Please add at least one exterior material to proceed.');
+          return;
+        }
+
+        function checkIncomplete(n) {
+          if (n > 0) {
+            showModal(
+              'Incomplete material rows',
+              n + ' material row' + (n > 1 ? 's have' : ' has') + ' some fields left empty. You can save anyway or cancel to review.',
+              'Save Anyway',
+              proceed
+            );
+          } else {
+            proceed();
+          }
+        }
+
+        if (check.empty > 0) {
+          var n = check.empty;
+          showModal(
+            'Empty rows found',
+            n + ' empty material row' + (n > 1 ? 's were' : ' was') + ' found. Remove ' + (n > 1 ? 'them' : 'it') + ' and continue, or cancel to review.',
+            'Remove & Save',
+            function () {
+              materialsSection.removeEmptyRows();
+              checkIncomplete(materialsSection.validate().incomplete);
+            }
+          );
+          return;
+        }
+
+        checkIncomplete(check.incomplete);
+      }
+
+      // ── Soft warning: key fields ──────────────────────────────────
+
+      var sizeInputs = document.querySelectorAll('#sizeSpecsSection .box');
+      var keyFields = [
+        { label: 'Management Group', el: document.querySelectorAll('.header-panel .box')[0] },
+        { label: 'Property Name', el: document.querySelectorAll('.header-panel .box')[1] },
+        { label: 'Job Description', el: document.querySelectorAll('.header-panel .box')[2] },
+        { label: 'Cover Size', el: sizeInputs[0] },
+        { label: 'Insert Size', el: sizeInputs[1] },
+        { label: 'Insert Count', el: sizeInputs[2] }
+      ];
+      var emptyKey = keyFields.filter(function (f) { return f.el && !f.el.value.trim(); });
+
+      if (emptyKey.length > 0) {
+        var names = emptyKey.map(function (f) { return f.label; }).join(', ');
+        showToast('Please fill in: ' + names + '.');
+        return;
+      }
+      doBindingDecorCheck();
+    }
+
+    // ── State capture ────────────────────────────────────────────
+
+    function captureFormState() {
+      var s = {
+        v: 1,
+        pv: (window._printVersion || 0) + 1,
+        d: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        stage: getStage(),
+        ns: document.getElementById('nonStandardCb').checked
+      };
+
+      var ti = document.querySelectorAll('.title .box');
+      s.des = ti[0] ? ti[0].value : '';
+      s.job = ti[1] ? ti[1].value : '';
+
+      var hi = document.querySelectorAll('.header-panel .box');
+      s.mgmt = hi[0] ? hi[0].value : '';
+      s.prop = hi[1] ? hi[1].value : '';
+      s.desc = hi[2] ? hi[2].value : '';
+
+      var si = document.querySelectorAll('#sizeSpecsSection .box');
+      s.cov = si[0] ? si[0].value : '';
+      s.ins = si[1] ? si[1].value : '';
+      s.insc = si[2] ? si[2].value : '';
+
+      var scRow = document.getElementById('sailclothRow');
+      if (scRow && scRow.style.display !== 'none') {
+        var scT = scRow.querySelectorAll('input[type=text]');
+        s.sc = {
+          s: scT[0] ? scT[0].value : '',
+          e: Array.from(scRow.querySelectorAll('.msd input:checked')).map(function (i) { return i.value; })
+        };
+      }
+
+      var cbRow = document.getElementById('customBoardRow');
+      if (cbRow && cbRow.style.display !== 'none') {
+        s.cb = cbRow.querySelector('input[type=text]').value;
+      }
+
+      var dbRow = document.getElementById('diecutBoardRow');
+      if (dbRow && dbRow.style.display !== 'none') {
+        var dbT = dbRow.querySelectorAll('input[type=text]');
+        var dbToggle = dbRow.querySelector('.seg-toggle input:checked');
+        s.db = {
+          desc: dbT[0] ? dbT[0].value : '',
+          ne: dbToggle ? dbToggle.value : null,
+          job: dbT[1] ? dbT[1].value : ''
+        };
+      }
+
+      s.materials = getMaterialsState();
+      s.hw = readHardwareCards();
+
+      s.bind = {};
+      Object.keys(BINDING).forEach(function (key) {
+        var row = document.getElementById('brow-' + key);
+        if (!row) return;
+        s.bind[key] = {
+          hw: window.mcsHardware ? mcsHardware.readAll(row) : {},
+          t: Array.from(row.querySelectorAll('input[type=text]:not([data-hw-field]), textarea')).map(function (i) {
+            var wrap = i.closest('.cond-input-wrap');
+            return { v: i.value, vis: wrap ? wrap.style.display !== 'none' : true };
+          }),
+          c: Array.from(row.querySelectorAll('input[type=checkbox]')).map(function (c) { return c.checked; })
+        };
+      });
+
+      s.decor = {};
+      Object.keys(DECOR).forEach(function (key) {
+        var rows = Array.from(document.querySelectorAll('.drow[data-key="' + key + '"]'));
+        if (rows.length === 0) return;
+        s.decor[key] = rows.map(function (row) {
+          var d = row.querySelector('.dctrls');
+          return {
+            t: Array.from(d.querySelectorAll('input[type=text], textarea')).map(function (i) {
+              var wrap = i.closest('.cond-input-wrap');
+              return { v: i.value, vis: wrap ? wrap.style.display !== 'none' : i.style.display !== 'none' };
+            }),
+            c: Array.from(d.querySelectorAll('input[type=checkbox]')).map(function (c) { return c.checked; }),
+            r: Array.from(d.querySelectorAll('.seg-toggle')).map(function (tog) {
+              var ch = tog.querySelector('input:checked');
+              return ch ? ch.value : null;
+            }),
+            m: Array.from(d.querySelectorAll('.msd')).map(function (msd) {
+              return Array.from(msd.querySelectorAll('input:checked')).map(function (i) { return i.value; });
+            })
+          };
+        });
+      });
+
+      var nr = document.getElementById('notesRow');
+      if (nr && nr.style.display !== 'none') s.notes = nr.querySelector('textarea').value;
+
+      s.blc = blcHandoff(s);
+      return s;
+    }
+
+    // ── State restore ────────────────────────────────────────────
+
+    function restoreFormState(s) {
+      if (!s || s.v !== 1) { showToast('Unrecognized configuration format.'); return; }
+      window._printVersion = s.pv || 1;
+
+      // Stage toggle
+      var stageInp = document.querySelector('#stageToggle input[value="' + (s.stage || 'Proof') + '"]');
+      if (stageInp) stageInp.checked = true;
+
+      // Non-standard flag
+      document.getElementById('nonStandardCb').checked = !!(s.ns);
+
+      var ti = document.querySelectorAll('.title .box');
+      if (ti[0]) ti[0].value = s.des || '';
+      if (ti[1]) ti[1].value = s.job || '';
+
+      var hi = document.querySelectorAll('.header-panel .box');
+      if (hi[0]) hi[0].value = s.mgmt || '';
+      if (hi[1]) hi[1].value = s.prop || '';
+      if (hi[2]) hi[2].value = s.desc || '';
+
+      var si = document.querySelectorAll('#sizeSpecsSection .box');
+      if (si[0]) si[0].value = s.cov || '';
+      if (si[1]) si[1].value = s.ins || '';
+      if (si[2]) si[2].value = s.insc || '';
+
+      if (s.sc) {
+        showSailcloth(true);
+        var scT = document.getElementById('sailclothRow').querySelectorAll('input[type=text]');
+        if (scT[0]) scT[0].value = s.sc.s || '';
+        var scM = document.getElementById('sailclothRow').querySelector('.msd');
+        if (scM) (s.sc.e || []).forEach(function (v) {
+          var inp = scM.querySelector('input[value="' + v + '"]');
+          if (inp) { inp.checked = true; msdUpdate(inp); }
+        });
+      } else {
+        showSailcloth(false);
+      }
+
+      if (s.cb !== undefined) {
+        showCustomBoard(true);
+        document.getElementById('customBoardRow').querySelector('input[type=text]').value = s.cb || '';
+      } else {
+        showCustomBoard(false);
+      }
+
+      if (s.db) {
+        showDiecutBoard(true);
+        var dbRow = document.getElementById('diecutBoardRow');
+        var dbT = dbRow.querySelectorAll('input[type=text]');
+        if (dbT[0]) dbT[0].value = s.db.desc || '';
+        if (s.db.ne) {
+          var dbRadio = dbRow.querySelector('.seg-toggle input[value="' + s.db.ne + '"]');
+          if (dbRadio) { dbRadio.checked = true; newexChange(dbRadio); }
+        }
+        if (dbT[1]) dbT[1].value = s.db.job || '';
+      } else {
+        showDiecutBoard(false);
+      }
+
+      setMaterialsState(materialsFromSaved(s));
+
+      document.querySelectorAll('#customizationRows .hw-card').forEach(function (c) { c.remove(); });
+      (s.hw || []).forEach(function (h) { addHardwareCard(h); });
+
+      document.getElementById('bindingRows').innerHTML = '';
+      Object.keys(BINDING).forEach(function (k) { document.getElementById('badd-' + k).disabled = false; });
+      Object.keys(s.bind || {}).forEach(function (key) {
+        if (!BINDING[key]) return;
+        addBinding(key);
+        var row = document.getElementById('brow-' + key);
+        var data = s.bind[key];
+        if (Array.isArray(data)) {
+          // Legacy format: flat array of text values, no checkboxes.
+          var legacy = data.slice();
+          row.querySelectorAll('.hw-group').forEach(function (g) {
+            var v = legacy.shift(), first = g.querySelector('[data-hw-field]');
+            if (v && first) first.value = v;
+          });
+          var inputs = row.querySelectorAll('input[type=text]:not([data-hw-field]), textarea');
+          legacy.forEach(function (v, i) { if (inputs[i]) inputs[i].value = v; });
+        } else if (data) {
+          // Checkboxes first so they reveal their conditional fields.
+          Array.from(row.querySelectorAll('input[type=checkbox]')).forEach(function (cb, i) {
+            if ((data.c || [])[i]) { cb.checked = true; bindCbToggle(cb); }
+          });
+          var t = (data.t || []).slice();
+          var groups = Array.from(row.querySelectorAll('.hw-group'));
+          if (data.hw) {
+            groups.forEach(function (g) { mcsHardware.fillGroup(g, data.hw[g.dataset.hwType]); });
+          } else if (groups.length) {
+            /* Saved before hardware fields: the card's first value(s) were the
+               free-text Size / Color (Cord + Eyelets on Menu Cord). Kept, in
+               each hardware item's first field, so nothing is lost. */
+            groups.forEach(function (g) {
+              var td = t.shift();
+              var first = g.querySelector('[data-hw-field]');
+              if (td && first) first.value = typeof td === 'object' ? (td.v || '') : td;
+            });
+          }
+          Array.from(row.querySelectorAll('input[type=text]:not([data-hw-field]), textarea')).forEach(function (inp, i) {
+            var td = t[i];
+            if (td) inp.value = typeof td === 'object' ? (td.v || '') : td;
+          });
+        }
+      });
+
+      document.getElementById('decorRows').innerHTML = '';
+      Object.keys(s.decor || {}).forEach(function (key) {
+        if (!DECOR[key]) return;
+        // Support old format (single object) and new format (array of objects)
+        var instances = Array.isArray(s.decor[key]) ? s.decor[key] : [s.decor[key]];
+        instances.forEach(function (data) {
+          addDecor(key);
+          var rows = document.querySelectorAll('.drow[data-key="' + key + '"]');
+          var d = rows[rows.length - 1].querySelector('.dctrls');
+
+          // Toggles first (they reveal conditional inputs)
+          Array.from(d.querySelectorAll('.seg-toggle')).forEach(function (tog, i) {
+            var val = (data.r || [])[i];
+            if (val) {
+              var radio = tog.querySelector('input[value="' + val + '"]');
+              if (radio) {
+                radio.checked = true;
+                tog.dataset.tipu ? tipuChange(radio) : newexChange(radio);
+              }
+            }
+          });
+          // Checkboxes
+          Array.from(d.querySelectorAll('input[type=checkbox]')).forEach(function (cb, i) {
+            var checked = (data.c || [])[i];
+            if (checked) { cb.checked = true; if (cb.closest('.newex-field')) cfToggle(cb); }
+          });
+          // Text inputs and textareas
+          Array.from(d.querySelectorAll('input[type=text], textarea')).forEach(function (inp, i) {
+            var td = (data.t || [])[i];
+            if (td) {
+              inp.value = typeof td === 'object' ? (td.v || '') : td;
+              if (typeof td === 'object') {
+                var wrap = inp.closest('.cond-input-wrap');
+                if (wrap) wrap.style.display = td.vis === false ? 'none' : '';
+                else inp.style.display = td.vis === false ? 'none' : '';
+              }
+            }
+          });
+          // MSD dropdowns
+          Array.from(d.querySelectorAll('.msd')).forEach(function (msd, i) {
+            ((data.m || [])[i] || []).forEach(function (v) {
+              var inp = msd.querySelector('input[value="' + v + '"]');
+              if (inp) { inp.checked = true; msdUpdate(inp); }
+            });
+          });
+        });
+      });
+
+      if (s.notes !== undefined && s.notes !== null) {
+        showNotes(true);
+        document.getElementById('notesRow').querySelector('textarea').value = s.notes;
+      } else {
+        showNotes(false);
+      }
+    }
+
+    // ── PDF drag-and-drop ─────────────────────────────────────────
+
+    var _pdfjsReady = false;
+    function ensurePdfJs(cb) {
+      if (_pdfjsReady) { cb(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = function () {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        _pdfjsReady = true;
+        cb();
+      };
+      s.onerror = function () {
+        showToast('Could not load PDF reader — check your internet connection.');
+      };
+      document.head.appendChild(s);
+    }
+
+    document.addEventListener('dragover', function (e) {
+      if (e.dataTransfer.types && Array.from(e.dataTransfer.types).indexOf('Files') > -1) {
+        e.preventDefault();
+        document.getElementById('dropOverlay').style.display = 'flex';
+      }
+    });
+
+    document.addEventListener('dragleave', function (e) {
+      if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
+        document.getElementById('dropOverlay').style.display = 'none';
+      }
+    });
+
+    document.addEventListener('drop', function (e) {
+      e.preventDefault();
+      document.getElementById('dropOverlay').style.display = 'none';
+      var file = e.dataTransfer.files[0];
+      if (!file || file.type !== 'application/pdf') {
+        showToast('Please drop a PDF generated by this tool.');
+        return;
+      }
+      ensurePdfJs(function () { loadFromPdf(file); });
+    });
+
+    function loadFromPdf(file) {
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        pdfjsLib.getDocument({ data: new Uint8Array(ev.target.result) }).promise
+          .then(function (pdf) {
+            var nums = [];
+            for (var i = 1; i <= pdf.numPages; i++) nums.push(i);
+            return Promise.all(nums.map(function (n) {
+              return pdf.getPage(n).then(function (p) { return p.getTextContent(); });
+            }));
+          })
+          .then(function (pages) {
+            var full = pages
+              .flatMap(function (p) { return p.items.map(function (it) { return it.str; }); })
+              .join('');
+            var m = full.match(/%%CS%%([\s\S]+?)%%CS%%/);
+            if (!m) { showToast('No configuration data found. Was this PDF made with this tool?'); return; }
+            try {
+              var json = decodeURIComponent(escape(atob(m[1].replace(/\s/g, ''))));
+              var state = JSON.parse(json);
+              restoreFormState(state);
+              showToast('Loaded v' + state.pv + ' · ' + state.d);
+            } catch (err) {
+              showToast('Could not read configuration data — PDF may be corrupted.');
+            }
+          })
+          .catch(function () { showToast('Could not parse this PDF.'); });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // ── Save / Print ──────────────────────────────────────────────
+
+    var _origPrint = window.print.bind(window);
+
+    function doSave() {
+      runPrintValidation(function () {
+        var state = captureFormState();
+
+        var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+        document.getElementById('stateEmbed').textContent = '%%CS%%' + b64 + '%%CS%%';
+        document.getElementById('printFooter').textContent = 'v' + state.pv + ' \xb7 ' + state.d;
+
+        var origTitle = document.title;
+        document.title = (state.job ? state.job + ' ' : '') + 'MCS ' + state.stage + ' v' + state.pv;
+        window.addEventListener('afterprint', function onAP() {
+          document.title = origTitle;
+          window.removeEventListener('afterprint', onAP);
+        });
+
+        // NOTE: _printVersion is NOT updated here intentionally.
+        // It only advances when a saved PDF is dragged back and loaded,
+        // so cancelling the print dialog never increments the version.
+
+        _origPrint();
+      });
+    }
+
+    // Override window.print so any third-party triggers also go through doSave
+    window.print = doSave;
+
+    // ============================================================
+    //  ACCENT COLOR PICKER
+    // ============================================================
+    (function () {
+      var STORAGE_KEY = 'mcs_accent_color';
+      var picker = document.getElementById('accentPicker');
+      var swatch = document.getElementById('accentSwatch');
+
+      // Find the top-level :root rule in this page's own <style>. Not
+      // styleSheets[0]: that became materials.css when the shared materials
+      // component's <link> went in above the <style>, which is what broke
+      // the picker. The rule (not an inline style on <html>) is changed so
+      // the print block's --accent: #fff still wins when printing.
+      var rootRule = (function () {
+        var sheets = Array.from(document.styleSheets).filter(function (sh) {
+          return sh.ownerNode && sh.ownerNode.tagName === 'STYLE';
+        });
+        for (var j = 0; j < sheets.length; j++) {
+          var rules = sheets[j].cssRules;
+          for (var i = 0; i < rules.length; i++) {
+            if (rules[i].selectorText === ':root' && rules[i].style.getPropertyValue('--accent')) return rules[i];
+          }
+        }
+      })();
+      if (!rootRule) return;
+
+      function luminance(hex) {
+        var c = [hex.slice(1,3), hex.slice(3,5), hex.slice(5,7)].map(function (h) {
+          var v = parseInt(h, 16) / 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+      }
+
+      function applyAccent(color) {
+        rootRule.style.setProperty('--accent', color);
+        rootRule.style.setProperty('--on-accent', luminance(color) > 0.4 ? '#262626' : '#fff');
+        swatch.style.background = color;
+        picker.value = color;
+      }
+
+      // Restore saved color on load
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) applyAccent(saved);
+
+      picker.addEventListener('input', function () {
+        applyAccent(picker.value);
+        localStorage.setItem(STORAGE_KEY, picker.value);
+      });
+    })();
+
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {
+        e.preventDefault();
+        doSave();
+      }
+    });
+
+    // ── Validation Panel ─────────────────────────────────────────────
+    (function () {
+
+      function evalValidation() {
+        var sections = [];
+
+        // ── 1. Header Fields (hard block) ──
+        var sizeInputs = document.querySelectorAll('#sizeSpecsSection .box');
+        var keyFields = [
+          { label: 'Management Group', el: document.querySelectorAll('.header-panel .box')[0] },
+          { label: 'Property Name',    el: document.querySelectorAll('.header-panel .box')[1] },
+          { label: 'Job Description',  el: document.querySelectorAll('.header-panel .box')[2] },
+          { label: 'Cover Size',   el: sizeInputs[0] },
+          { label: 'Insert Size',  el: sizeInputs[1] },
+          { label: 'Insert Count', el: sizeInputs[2] }
+        ];
+        sections.push({
+          title: 'Header Fields',
+          note: 'Hard block if any empty',
+          items: keyFields.map(function (f) {
+            var ok = f.el && f.el.value.trim();
+            return { label: f.label, status: ok ? 'pass' : 'fail', note: ok ? '' : 'empty' };
+          })
+        });
+
+        // ── 2. Binding Rows (hard block) ──
+        var bindingItems = [];
+        document.querySelectorAll('.brow').forEach(function (card) {
+          if (card.style.display === 'none') return;
+          var label = card.querySelector('.btype') ? card.querySelector('.btype').textContent.trim() : 'Binding';
+          var empty = Array.from(card.querySelectorAll('input[type=text], textarea'))
+            .filter(function (i) {
+              var wrap = i.closest('.cond-input-wrap');
+              var hidden = wrap ? wrap.style.display === 'none' : i.style.display === 'none';
+              return !hidden && !i.value.trim();
+            });
+          var hwType = card.querySelector('.hw-card__type');
+          if (hwType && !hwType.value) empty.push(hwType);
+          bindingItems.push({
+            label: label,
+            status: empty.length ? 'fail' : 'pass',
+            note: empty.length ? empty.length + ' empty field' + (empty.length > 1 ? 's' : '') : ''
+          });
+        });
+        if (!bindingItems.length) {
+          bindingItems.push({ label: 'None added', status: 'neutral', note: '' });
+        }
+        sections.push({ title: 'Binding', note: 'Hard block if any fields empty', items: bindingItems });
+
+        // ── 3. Decoration Rows (hard block + die-type soft warn) ──
+        var decorItems = [];
+        document.querySelectorAll('.drow').forEach(function (card) {
+          var label = card.querySelector('.btype') ? card.querySelector('.btype').textContent.trim() : 'Decor';
+          var d = card.querySelector('.dctrls');
+          var issues = [];
+          var warnings = [];
+
+          d.querySelectorAll('input[type=text], textarea').forEach(function (inp) {
+            var wrap = inp.closest('.cond-input-wrap');
+            var hidden = wrap ? wrap.style.display === 'none' : inp.style.display === 'none';
+            if (!hidden && !inp.value.trim()) {
+              var lab = inp.closest('.card-field') && inp.closest('.card-field').querySelector('.lab');
+              issues.push(lab ? lab.textContent.trim() : 'text field');
+            }
+          });
+          d.querySelectorAll('.seg-toggle').forEach(function (tog) {
+            if (!tog.querySelector('input:checked')) issues.push('toggle not selected');
+          });
+          d.querySelectorAll('.msd').forEach(function (msd) {
+            var val = msd.querySelector('.msd-val').textContent.trim();
+            if (val === (msd.dataset.placeholder || '')) {
+              if (msd.dataset.placeholder === 'No Die Type Selected') {
+                warnings.push('no die type');
+              } else {
+                issues.push('dropdown at default');
+              }
+            }
+          });
+
+          var status = issues.length ? 'fail' : warnings.length ? 'warn' : 'pass';
+          var note = issues.length
+            ? issues.join(', ')
+            : warnings.length
+              ? warnings.join(', ') + ' — save allowed w/ modal'
+              : '';
+          decorItems.push({ label: label, status: status, note: note });
+        });
+        if (!decorItems.length) {
+          decorItems.push({ label: 'None added', status: 'neutral', note: '' });
+        }
+        sections.push({ title: 'Decoration', note: 'Hard block (except die type → modal)', items: decorItems });
+
+        // ── 4. Materials ──
+        var matItems = [];
+        var mv = materialsSection ? materialsSection.validate() : { hasExterior: false, empty: 0, incomplete: 0 };
+        matItems.push({
+          label: 'Exterior category required',
+          status: mv.hasExterior ? 'pass' : 'fail',
+          note: mv.hasExterior ? '' : 'hard block — add at least one'
+        });
+        matItems.push({
+          label: 'Empty rows',
+          status: mv.empty ? 'warn' : 'pass',
+          note: mv.empty ? mv.empty + ' row' + (mv.empty > 1 ? 's' : '') + ' — modal prompts remove' : 'none'
+        });
+        matItems.push({
+          label: 'Incomplete rows',
+          status: mv.incomplete ? 'warn' : 'pass',
+          note: mv.incomplete ? mv.incomplete + ' row' + (mv.incomplete > 1 ? 's' : '') + ' — save allowed w/ modal' : 'none'
+        });
+
+        sections.push({ title: 'Materials', note: 'Exterior required; empties & incompletes prompt modal', items: matItems });
+
+        return sections;
+      }
+
+      function dot(status) {
+        return '<span class="vp-dot vp-dot-' + status + '"></span>';
+      }
+
+      function renderPanel() {
+        var container = document.getElementById('val-panel-body');
+        if (!container) return;
+        var sections = evalValidation();
+        var html = '';
+        sections.forEach(function (sec) {
+          var hasFail = sec.items.some(function (i) { return i.status === 'fail'; });
+          var hasWarn = sec.items.some(function (i) { return i.status === 'warn'; });
+          var secStatus = hasFail ? 'fail' : hasWarn ? 'warn' : sec.items.every(function(i){ return i.status === 'neutral'; }) ? 'neutral' : 'pass';
+          html += '<div class="vp-section">';
+          html += '<div class="vp-section-title">' + dot(secStatus) + sec.title + '<span style="font-weight:400;font-size:10px;color:#555;margin-left:auto;padding-right:2px;">' + sec.note + '</span></div>';
+          sec.items.forEach(function (item) {
+            var noteClass = item.status === 'warn' ? ' warn' : item.status === 'fail' ? ' fail' : '';
+            html += '<div class="vp-item">' + dot(item.status) +
+              '<span class="vp-label">' + item.label + '</span>' +
+              (item.note ? '<span class="vp-note' + noteClass + '">' + item.note + '</span>' : '') +
+              '</div>';
+          });
+          html += '</div>';
+        });
+        container.innerHTML = html;
+      }
+
+      var _rafPending = false;
+      function scheduleRender() {
+        if (!document.getElementById('val-panel').classList.contains('open')) return;
+        if (_rafPending) return;
+        _rafPending = true;
+        requestAnimationFrame(function () { _rafPending = false; renderPanel(); });
+      }
+
+      window.toggleValidationPanel = function () {
+        var panel = document.getElementById('val-panel');
+        panel.classList.toggle('open');
+        if (panel.classList.contains('open')) renderPanel();
+      };
+
+      document.addEventListener('input', scheduleRender, true);
+      document.addEventListener('change', scheduleRender, true);
+
+      var observer = new MutationObserver(function (muts) {
+        var structural = muts.some(function (m) { return m.addedNodes.length || m.removedNodes.length; });
+        if (structural) setTimeout(scheduleRender, 60);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+    })();
+  </script>
+
+  <!-- Materials section: mount the shared component -->
+  <script type="module">
+    import { mountMaterials } from '../components/materials/materials.js';
+    import { CATALOG } from '../data/catalog.js';
+    import { hardwareSuggest } from '../engines/catalog.js';
+    window.mcsCatalog = CATALOG;     /* departments + hardware (blcHandoff, hardware-fields.js) */
+    window.hardwareSuggest = hardwareSuggest;
+    mountMaterials(document.getElementById('materials-mount'), {
+      showQty: false,
+      onChange: function (api) { updateMaterialCounts(api.counts()); },
+      onCategory: function (id) { if (id === 'other') nudgeNonStandard(); }
+    }).then(function (api) {
+      materialsSection = api;
+      if (pendingMaterials) api.setState(pendingMaterials);
+      pendingMaterials = null;
+    }).catch(function (err) { console.error('Materials section failed to load', err); });
+  </script>
+</body>
+
+</html>
