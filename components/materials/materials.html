@@ -95,6 +95,8 @@
     </td>
     <td class="materials__col-fn">
       <input type="text" class="materials__function" data-role="function" list="materials-dl-ext-function">
+      <!-- Print only (MCS): the comma-separated functions, one item each. -->
+      <ul class="materials__fn-print" data-role="fn-print"></ul>
     </td>
     <td class="materials__col-qty"><input type="text" class="materials__qty" data-role="qty" inputmode="numeric" placeholder="0"></td>
     <td class="materials__col-unit">
@@ -136,6 +138,10 @@
           <label class="materials__msd-opt" tabindex="-1"><input type="checkbox" value="Other"> Other</label>
         </div>
       </div>
+      <!-- Print only (MCS): one item per function, with its card details, e.g.
+           "Panels — wrapped interior boards both sides · 8.5x11". Bulleted when
+           there are several. Filled by preparePrint(). -->
+      <ul class="materials__fn-print" data-role="fn-print"></ul>
     </td>
     <td class="materials__col-qty"><input type="text" class="materials__qty" data-role="qty" inputmode="numeric" placeholder="0"></td>
     <td class="materials__col-unit">
@@ -147,6 +153,11 @@
     </td>
     <td class="materials__col-rm"><button type="button" class="materials__rm" data-action="remove-row" title="Remove">&times;</button></td>
   </tr>
+</template>
+
+<!-- Print only (MCS): one function in a row's Function cell -->
+<template data-tpl="fn-print-item">
+  <li class="materials__fn-print-item"></li>
 </template>
 
 <!-- Material cell: shown until a category is chosen -->

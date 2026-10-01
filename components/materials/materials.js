@@ -631,6 +631,37 @@ export async function mountMaterials(host, opts = {}) {
       return [...seen];
     },
 
+    /* MCS print: write each row's functions into its Function cell, one
+       list item each (interior ones with their card details: "Panels —
+       wrapped interior boards · 8.5x11"), and mark the section so the cards
+       are left off the page.
+       Call right before printing. */
+    preparePrint() {
+      root.classList.add('materials--print-fold');
+      const cardValues = card => Array.from(card.querySelectorAll('.materials__fn-input, .materials__msd')).map(el => {
+        if (el.classList.contains('materials__msd')) {
+          const v = el.querySelector('.materials__msd-val').textContent.trim();
+          return v === (el.dataset.placeholder || '') ? '' : v;
+        }
+        return el.value.trim();
+      }).filter(Boolean);
+      const fill = (tr, items) => role(tr, 'fn-print').replaceChildren(...items.map(text => {
+        const li = tpl('fn-print-item'); li.textContent = text; return li;
+      }));
+      rowsOf('int').forEach(tr => {
+        const checked = Array.from(role(tr, 'functions').querySelectorAll('input:checked')).map(i => i.value);
+        fill(tr, checked.map(fn => {
+          const card = fnCards().querySelector('[data-fn="' + fn + '"][data-row-id="' + tr.dataset.rowId + '"]');
+          const vals = card ? cardValues(card) : [];
+          return fn + (vals.length ? ' — ' + vals.join(' · ') : '');
+        }));
+      });
+      /* Exterior Function is free text: "Back Cover, sailcloth" is two. */
+      rowsOf('ext').forEach(tr => {
+        fill(tr, role(tr, 'function').value.split(',').map(x => x.trim()).filter(Boolean));
+      });
+    },
+
     /* Labelled rows for a page that prints its own layout (BLC). */
     describe() {
       const out = [];

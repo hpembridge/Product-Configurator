@@ -529,6 +529,11 @@
       width: 100%;
     }
 
+    /* Print-only lines (filled by preparePrintLayout) */
+    .print-lines {
+      display: none;
+    }
+
     .box.grow {
       flex: 1 1 auto;
       min-width: 140px;
@@ -1099,6 +1104,76 @@
         border-color: #d0d0d0;
       }
 
+      /* ── Compact print (preparePrintLayout) ──
+         Customization, Binding and Decoration cards print as one line each,
+         two to a row; empty sections don't print at all. */
+      #customizationRows,
+      #bindingRows,
+      #decorRows,
+      .btnrow {
+        display: none !important;
+      }
+
+      /* Same look as the material tables (components/materials/materials.css:
+         .materials__table th / td, .materials__col-num, .materials__col-cat,
+         .materials__print, and its print grid colour). */
+      .print-lines {
+        display: block;
+        padding-top: 4px;
+      }
+
+      .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      .print-table th {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        color: var(--ink);
+        text-align: left;
+        padding: 4px 8px;
+        border-bottom: 1px solid #c6c6c6;
+        border-right: 1px solid #c6c6c6;
+        text-transform: uppercase;
+      }
+
+      .print-table td {
+        font-size: 12px;
+        color: var(--ink);
+        padding: 6px 7px;
+        border-bottom: 1px solid #c6c6c6;
+        border-right: 1px solid #c6c6c6;
+        vertical-align: middle;
+      }
+
+      .print-table th:last-child,
+      .print-table td:last-child {
+        border-right: none;
+      }
+
+      .print-table .print-table__num {
+        width: 26px;
+        color: var(--muted);
+        text-align: center;
+        font-size: 11px;
+        padding: 4px 0;
+      }
+
+      .print-table__item {
+        width: 130px;
+      }
+
+      .print-line {
+        break-inside: avoid;
+      }
+
+      .is-print-empty {
+        display: none !important;
+      }
+
 
       .seg-toggle input[type=radio] {
         display: none;
@@ -1377,7 +1452,7 @@
       </div>
 
       <!-- ===== SECTION 3: MATERIAL (shared component: components/materials/) ===== -->
-      <div class="band band--split">
+      <div class="band band--split" data-print-section="materials">
         Material
         <div class="count-group">
           <span class="count" id="extCount">1 ext</span>
@@ -1390,7 +1465,7 @@
       </div>
 
       <!-- ===== SECTION 4: CUSTOMIZATIONS (sailcloth + custom board) ===== -->
-      <div class="band">Customizations</div>
+      <div class="band" data-print-section="customizations">Customizations</div>
       <div class="section">
         <div class="btnrow">
           <button class="addbtn" id="sailclothAdd" onclick="showSailcloth(true)">+ Sailcloth Reveal</button>
@@ -1457,6 +1532,8 @@
           </div>
 
         </div>
+        <!-- Print only: one line per card (preparePrintLayout) -->
+        <div class="print-lines" data-print-for="customizationRows" data-print-head="Customization"></div>
       </div>
 
       <!-- ===== HARDWARE TEMPLATES =====
@@ -1492,8 +1569,32 @@
       </template>
       <!-- ===== /HARDWARE TEMPLATES ===== -->
 
+      <!-- PrintTable — how Customizations, Binding Type and Decoration print:
+           a table styled like the material tables, one row per card (its title,
+           then its answers on one line). Cloned by preparePrintLayout() into
+           the section's .print-lines; the column head comes from data-print-head. -->
+      <template id="printTableTemplate">
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th class="print-table__num">#</th>
+              <th class="print-table__item"></th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </template>
+      <template id="printRowTemplate">
+        <tr class="print-line">
+          <td class="print-table__num"></td>
+          <td class="print-table__item print-line__title"></td>
+          <td class="print-line__vals"></td>
+        </tr>
+      </template>
+
       <!-- ===== SECTION 5: BINDING TYPE (build-as-needed) ===== -->
-      <div class="band">Binding Type</div>
+      <div class="band" data-print-section="binding">Binding Type</div>
       <div class="section">
         <div class="btnrow">
           <button class="addbtn" id="badd-corners" onclick="addBinding('corners')">+ Corners</button>
@@ -1506,10 +1607,12 @@
           <button class="addbtn" id="badd-other" onclick="addBinding('other')">+ Other</button>
         </div>
         <div id="bindingRows"></div>
+        <!-- Print only: one line per card (preparePrintLayout) -->
+        <div class="print-lines" data-print-for="bindingRows" data-print-head="Binding"></div>
       </div>
 
       <!-- ===== SECTION 5: DECORATION (build-as-needed) ===== -->
-      <div class="band">Decoration</div>
+      <div class="band" data-print-section="decoration">Decoration</div>
       <div class="section">
         <div class="btnrow">
           <button class="addbtn" id="dadd-deboss" onclick="addDecor('deboss')">+ Deboss</button>
@@ -1521,10 +1624,12 @@
           <button class="addbtn" id="dadd-other" onclick="addDecor('other')">+ Other</button>
         </div>
         <div id="decorRows"></div>
+        <!-- Print only: one line per card (preparePrintLayout) -->
+        <div class="print-lines" data-print-for="decorRows" data-print-head="Decoration"></div>
       </div>
 
       <!-- ===== SECTION 6: NOTES (conditional) ===== -->
-      <div class="band">Notes</div>
+      <div class="band" data-print-section="notes">Notes</div>
       <div class="section">
         <button class="addbtn" id="notesAdd" onclick="showNotes(true)">+ Notes</button>
         <div class="notewrap" id="notesRow" style="display:none;">
@@ -2699,9 +2804,104 @@
 
     var _origPrint = window.print.bind(window);
 
+    /* ── Compact print layout ─────────────────────────────────────────
+       Right before printing: every visible card under Customizations,
+       Binding Type and Decoration becomes one row of a table in its
+       section's .print-lines — "Ring Binder | 3 Ring · IM85N · Black · 1/ea".
+       Only answers print: the chosen side of a toggle, ticked options,
+       filled fields. A field's label is kept (Board: Black Lexide) unless
+       it repeats the card title or the field is hardware. Sections with
+       nothing in them are hidden. The cards print as they did if this
+       hasn't run (e.g. the browser's own Print menu without beforeprint). */
+    function printLineValues(card, title) {
+      var vals = [];
+      var shown = function (el) { return el.offsetParent !== null; };
+      var labelFor = function (el) {
+        var wrap = el.closest('.cond-input-wrap');
+        var lab = wrap ? wrap.querySelector('.lab') : null;
+        if (!lab) {
+          var cf = el.closest('.card-field');
+          lab = cf ? cf.querySelector(':scope > .lab') : null;
+        }
+        var t = lab ? lab.textContent.trim() : '';
+        return t && t.toLowerCase() !== title.toLowerCase() ? t : '';
+      };
+      card.querySelectorAll('input[type=text], textarea, .seg-toggle, .msd, input[type=checkbox]').forEach(function (el) {
+        if (!el.classList.contains('msd') && el.closest('.msd')) return;          // an option inside a multi-select
+        if (!el.classList.contains('seg-toggle') && el.closest('.seg-toggle')) return;
+        if (!shown(el)) return;
+        if (el.classList.contains('seg-toggle')) {
+          var c = el.querySelector('input:checked');
+          var l = c && el.querySelector('label[for="' + c.id + '"]');
+          if (c) vals.push(l ? l.textContent.trim() : c.value);
+          return;
+        }
+        if (el.classList.contains('msd')) {
+          var mv = el.querySelector('.msd-val').textContent.trim();
+          if (mv && mv !== (el.dataset.placeholder || '')) vals.push((labelFor(el) ? labelFor(el) + ': ' : '') + mv);
+          return;
+        }
+        if (el.type === 'checkbox') {
+          if (el.checked) vals.push(el.closest('label').textContent.trim());
+          return;
+        }
+        var v = el.value.trim();
+        if (!v) return;
+        if (el.dataset.hwField === 'qtyEa') vals.push(v + '/ea');
+        else if (el.dataset.hwField) vals.push(v);
+        else vals.push((labelFor(el) ? labelFor(el) + ': ' : '') + v);
+      });
+      return vals;
+    }
+
+    function preparePrintLayout() {
+      document.querySelectorAll('.print-lines').forEach(function (host) {
+        host.replaceChildren();
+        var src = document.getElementById(host.dataset.printFor);
+        var cards = Array.from(src.children).filter(function (card) {
+          return card.matches('.brow, .drow') && card.offsetParent !== null;
+        });
+        if (!cards.length) return;
+        var table = document.getElementById('printTableTemplate').content.firstElementChild.cloneNode(true);
+        table.querySelector('.print-table__item').textContent = host.dataset.printHead || 'Item';
+        var body = table.querySelector('tbody');
+        cards.forEach(function (card, i) {
+          var title = ((card.querySelector('.btype') || {}).textContent || '').trim();
+          var row = document.getElementById('printRowTemplate').content.firstElementChild.cloneNode(true);
+          row.querySelector('.print-table__num').textContent = i + 1;
+          row.querySelector('.print-line__title').textContent = title;
+          row.querySelector('.print-line__vals').textContent = printLineValues(card, title).join(' · ');
+          body.appendChild(row);
+        });
+        host.appendChild(table);
+      });
+
+      if (materialsSection) materialsSection.preparePrint();
+
+      /* Hide a section's band and body when there's nothing to print. */
+      var notesRow = document.getElementById('notesRow');
+      var hasMaterials = !materialsSection || materialsSection.describe().some(function (r) { return r.hasContent; }) ||
+        !!document.querySelector('#materials-mount [data-cc-int]');
+      var has = {
+        materials: hasMaterials,
+        customizations: !!document.querySelector('[data-print-for="customizationRows"] .print-line'),
+        binding: !!document.querySelector('[data-print-for="bindingRows"] .print-line'),
+        decoration: !!document.querySelector('[data-print-for="decorRows"] .print-line'),
+        notes: notesRow.style.display !== 'none' && !!notesRow.querySelector('textarea').value.trim()
+      };
+      document.querySelectorAll('.band[data-print-section]').forEach(function (band) {
+        var empty = !has[band.dataset.printSection];
+        band.classList.toggle('is-print-empty', empty);
+        var body = band.nextElementSibling;
+        if (body && body.classList.contains('section')) body.classList.toggle('is-print-empty', empty);
+      });
+    }
+    window.addEventListener('beforeprint', preparePrintLayout);
+
     function doSave() {
       runPrintValidation(function () {
         var state = captureFormState();
+        preparePrintLayout();
 
         var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
         document.getElementById('stateEmbed').textContent = '%%CS%%' + b64 + '%%CS%%';

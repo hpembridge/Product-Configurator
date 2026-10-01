@@ -431,7 +431,32 @@
   padding: 5px 6px;
   color: var(--ink);
 }
+.materials__fn-print { display: none; }
+
 @media print {
+  /* MCS (after preparePrint()): each interior row's Function cell carries its
+     function cards' details, so the cards themselves don't print. The
+     Standard CC Interior card has no row, so it still does. */
+  .materials--print-fold .materials__col-fn .materials__msd,
+  .materials--print-fold .materials__col-fn .materials__function { display: none !important; }
+  .materials--print-fold .materials__fn-print {
+    display: block;
+    margin: 0;
+    padding: 5px 7.5px;   /* where the text sits in the other cells' inputs */
+    font-size: 12px;
+    list-style: none;
+  }
+  /* Several functions: a bulleted list. One: plain text. */
+  .materials--print-fold .materials__fn-print:has(li + li) {
+    list-style: disc;
+    padding-left: 22px;
+  }
+  .materials--print-fold .materials__fn-cards [data-row-id] { display: none !important; }
+  /* Function gets about half the Material column's width on paper
+     (Material ≈ 55%, Function ≈ 27% of the MCS's letter-width sheet). */
+  .materials--print-fold .materials__col-fn { width: 27%; }
+  .materials--print-fold .materials__fn-cards:not(:has(> :not([data-row-id]))) { display: none; }
+
   .materials__cat {
     background: transparent;
     border-color: transparent;
